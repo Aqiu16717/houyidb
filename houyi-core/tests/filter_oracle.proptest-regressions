@@ -1,0 +1,10 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 9b5e63b1e0a5c99d61571e3d91dca19f3c256e7059cd5a448eb7bf1a3e951af4 # shrinks to rows = [{"a": Int64(0)}, {}], pred = And(GtEq(Int64(0)), GtEq(Int64(0)))
+cc d01c7487200ed15fbeab68b9fe1d3d0bddacd8cc4e0bae2ddec60be9c652be20 # shrinks to rows = [{"a": Bool(false)}], pred = Or(Eq(Int64(0)), GtEq(Int64(0)))
+cc 2445d2795b7af2555ea07e93ecce18425de9e7a7627bb5a49e79338b895dd64d # shrinks to rows = [{}], pred_a = Eq(Int64(0)), pred_b = Eq(Int64(0))
+cc 6a903ad8b23a63a2bfc54e0109395087edac22e8a70ea9bdcbf39db2ef486967 # shrinks to rows = [{}, {"a": Int64(-1)}], pred = In([JsonText("null")])

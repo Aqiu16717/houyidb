@@ -1,0 +1,25 @@
+# 构建上下文瘦身：镜像构建只需 Rust 源码与清单。
+target/
+.git/
+.gitignore
+.github/
+
+# 文档与资产（不进镜像）
+docs/
+*.md
+
+# 各语言 SDK 的构建产物与依赖
+sdk/typescript/**/node_modules/
+sdk/typescript/**/dist/
+sdk/dotnet/**/bin/
+sdk/dotnet/**/obj/
+sdk/java/**/.gradle/
+sdk/java/**/build/
+sdk/python/**/*.egg-info/
+sdk/python/**/__pycache__/
+
+# 本地虚拟环境 / 压测残留 / WAL
+.venv*/
+*.wal
+*.wal.*
+tmp/

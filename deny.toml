@@ -1,0 +1,42 @@
+# 依赖策略（P4.8 / S9）。CI 与本地 `scripts/security_audit.sh` 共用。
+# EN: dependency policy shared by CI and the local security gate.
+#
+# 原则：
+# - 已知漏洞 = 失败（cargo-deny 默认 deny；cargo audit 双重覆盖 RustSec）。
+# - 许可证白名单只收商用分发安全的宽松/弱 copyleft 许可证；新增许可证必须
+#   显式评审后加入。
+# - 未知 registry / git 源 = 失败：依赖必须来自 crates.io 或显式批准的源。
+# - 多版本暂以 warn 处理（生态现实），通配符依赖直接失败。
+
+[licenses]
+confidence-threshold = 0.9
+allow = [
+    "MIT",
+    "MIT-0",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Zlib",
+    "MPL-2.0",
+    "OpenSSL",
+    "CDLA-Permissive-2.0",
+]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+highlight = "all"
+workspace-default-features = "allow"
+external-default-features = "allow"
+allow = []
+deny = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

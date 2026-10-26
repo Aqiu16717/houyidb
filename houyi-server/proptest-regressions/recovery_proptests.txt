@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 4fbea488d0cb1ea881d841883d19df626b9e16cad7f193017235a19c13bd8c50 # shrinks to ops = [Upsert { id: 0, values: [0.0, 0.009372702, 0.0, 0.0], label: None, payload: [] }, Upsert { id: 1, values: [0.0, 0.0, 0.0, 0.0], label: None, payload: [] }], cp_seed = Index(0)

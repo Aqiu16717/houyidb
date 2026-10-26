@@ -1,0 +1,11 @@
+{{- if .Values.monitoring.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "houyidb.fullname" . }}
+  labels:
+    {{- include "houyidb.labels" . | nindent 4 }}
+spec:
+  groups:
+    {{- toYaml .Values.monitoring.prometheusRule.groups | nindent 4 }}
+{{- end }}

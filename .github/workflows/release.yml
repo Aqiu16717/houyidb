@@ -1,0 +1,144 @@
+name: Release
+
+# 打 v* 标签触发：构建多平台 houyi-server 二进制 → GitHub Release，
+# 并构建 linux/amd64+arm64 镜像推 GHCR（默认可用）与 Docker Hub（可选渠道）。
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+# contents:write 供 softprops/action-gh-release 上传产物
+permissions:
+  contents: write
+
+# Linux runner 固定 Ubuntu 24.04：ubuntu-latest 会随 GitHub 镜像迁移漂移
+# （2026-10 起迁 Ubuntu 26），固定后升级由我们显式决定。
+jobs:
+  # ---------- 多平台二进制 → GitHub Release ----------
+  build-binaries:
+    name: Binary (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # P4.8：无原生 C 依赖（NUMA 改读 sysfs），全部 portable 路径。
+          - name: linux-x86_64
+            os: ubuntu-24.04 # 固定 LTS，避免 ubuntu-latest 漂移
+            target: x86_64-unknown-linux-gnu
+          - name: linux-aarch64
+            os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - name: macos-aarch64
+            os: macos-latest
+            target: aarch64-apple-darwin
+          - name: macos-x86_64
+            os: macos-latest # arm64 runner 交叉编译 x86_64（macos-13 已退役）
+            target: x86_64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Build
+        run: cargo build --release -p houyi-server --target ${{ matrix.target }}
+      - name: Package
+        shell: bash
+        # ref_name 经 env 传入（不打进脚本文本）：git 标签名允许 $()/反引号等
+        # shell 元字符，直接插值即工作流注入（tag push 者可控 ref_name）。
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          MATRIX_NAME: ${{ matrix.name }}
+          MATRIX_TARGET: ${{ matrix.target }}
+        run: |
+          pkg="houyi-server-${REF_NAME}-${MATRIX_NAME}"
+          mkdir -p "dist/$pkg"
+          cp "target/${MATRIX_TARGET}/release/houyi-server" "dist/$pkg/"
+          cp README.md "dist/$pkg/" 2>/dev/null || true
+          tar -C dist -czf "$pkg.tar.gz" "$pkg"
+          shasum -a 256 "$pkg.tar.gz" > "$pkg.tar.gz.sha256"
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          files: |
+            houyi-server-${{ github.ref_name }}-${{ matrix.name }}.tar.gz
+            houyi-server-${{ github.ref_name }}-${{ matrix.name }}.tar.gz.sha256
+
+  # ---------- Docker 镜像 → GHCR（默认）+ Docker Hub（可选）----------
+  # GHCR 只需 GITHUB_TOKEN（packages:write），fork 开箱可用；镜像名强制小写
+  # （GHCR 不接受大写 owner/repo）。Docker Hub 为可选附加渠道：
+  # 需要的 secrets：DOCKERHUB_USERNAME / DOCKERHUB_TOKEN（Hub 访问令牌，非密码）。
+  # 镜像标签：:latest + :<tag>（如 :v0.2.0-beta）。
+  docker:
+    name: Container images
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write # GHCR 推送
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Lowercase GHCR image name
+        run: echo "GHCR_IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # 未配置 Docker Hub secrets 时跳过登录与 Hub 标签（fork/未启用的仓库不至于整片红）
+      - name: Login to Docker Hub
+        # Hub 是可选渠道：登录失败（令牌过期/Hub 故障）降级为只推 GHCR，
+        # 不拖垮整个发布（OCR d69068e[4]）。
+        id: dockerhub-login
+        continue-on-error: true
+        if: vars.DOCKERHUB_ENABLED == 'true'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Compute tag list
+        # 标签名/secrets 一律经 env 传入，不直插脚本（工作流注入防护，同 Package step）。
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          DOCKERHUB_ENABLED: ${{ vars.DOCKERHUB_ENABLED }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          LOGIN_OUTCOME: ${{ steps.dockerhub-login.outcome }}
+        run: |
+          tags="${GHCR_IMAGE}:latest,${GHCR_IMAGE}:${REF_NAME}"
+          # 只有登录真的成功才加 Hub 标签：DOCKERHUB_ENABLED=true 但登录失败的
+          # 场景下，给 build-push 一个未认证的 registry 标签会让整步失败。
+          if [ "$DOCKERHUB_ENABLED" = "true" ] && [ "$LOGIN_OUTCOME" = "success" ]; then
+            tags="$tags,${DOCKERHUB_USERNAME}/houyidb:latest,${DOCKERHUB_USERNAME}/houyidb:${REF_NAME}"
+          fi
+          echo "IMAGE_TAGS=$tags" >> "$GITHUB_ENV"
+      # 降级必须响亮：Hub 登录失败时 job 仍是绿的，唯一的线索是 build-push
+      # 少了 Hub 标签——太容易漏看（OCR 36f979f[1]）。显式 annotation 让
+      # Hub-only 降级在 run 摘要页一眼可见。
+      - name: Warn if Docker Hub push is degraded
+        if: vars.DOCKERHUB_ENABLED == 'true' && steps.dockerhub-login.outcome != 'success'
+        # outcome 也走 env（OCR 5a83361[1]：与 Compute tag list 同一纪律，
+        # 防止直插模式被后续编辑复制扩散）；单行 echo（OCR 5a83361[2]：
+        # 反斜杠续行怕 trailing whitespace，静默断行会让 bash -e 把整个
+        # release job 炸掉——warning 步不该有这种破坏力）。
+        env:
+          LOGIN_OUTCOME: ${{ steps.dockerhub-login.outcome }}
+        run: echo "::warning::Docker Hub login did not succeed (outcome=$LOGIN_OUTCOME); this release pushes GHCR only. Check DOCKERHUB_USERNAME/DOCKERHUB_TOKEN."
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE_TAGS }}
+          # GHA 缓存按分支作用域隔离：PR 的缓存仅该 PR 可读，tag 推送的 run
+          # 只能恢复默认分支的缓存。因此：
+          # - cache-from 只留 houyidb-ci（release 切自 main，main 推送时
+          #   ci.yml 已把层写进该 scope，直接命中）；
+          # - 不写 cache-to：tag run 上写 release scope 永远不可能被后续
+          #   run 读到（tag 只推一次），纯属浪费配额（OCR d69068e[2][5]）。
+          cache-from: type=gha,scope=houyidb-ci

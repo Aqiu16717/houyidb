@@ -1,0 +1,72 @@
+[package]
+name = "houyidb-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+# 独立 workspace（P4.5.1）：libFuzzer 目标需要 nightly + `-Zsanitizer`，不能在主
+# workspace 的 stable test/clippy/fmt 门禁里构建。`[workspace]` 表把本目录与父
+# workspace 解耦——主 workspace 的 members 是显式列表，不含本目录。
+[workspace]
+members = ["."]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+# 结构感知输入：libFuzzer 仍按字节变异，`Unstructured` 把前若干字节解成结构化字段
+# （tag/lsn/stage…），余下字节 `take_rest()` 作为 body——这样变异落在 body 语法上，
+# 而不是耗在「长度字段与缓冲不符」上。且语料种子仍是可读的「头字段 + body」字节。
+arbitrary = "1.5"
+tokio = { version = "1", features = ["rt", "time"] }
+# 仅 `examples/seed_corpus` 使用：upsert_batch 记录的 payload 是
+# `serde_json::Map`，种子必须走真实编码器构造。
+serde_json = "1"
+
+[dependencies.houyi-persistence]
+path = "../houyi-persistence"
+features = ["fuzz-api"]
+
+# 关掉 hwloc/SIMD：fuzz 目标是解析器 never-panic 证据，不需要硬件特化路径，
+# 也不引入 hwloc 原生依赖。
+[dependencies.houyi-vector]
+path = "../houyi-vector"
+default-features = false
+features = ["portable"]
+
+[dependencies.houyi-query]
+path = "../houyi-query"
+
+# ── 4 个目标（P4.5.1）───────────────────────────────────────────
+# 1) WAL v2 字节流（整文件 / 尾部增量 / collection 记录）
+[[bin]]
+name = "wal_v2_decode"
+path = "fuzz_targets/wal_v2_decode.rs"
+test = false
+doc = false
+bench = false
+
+# 2) 图快照恢复（文件信封 + payload 层，含伪造 count 的 OOM 守卫）
+[[bin]]
+name = "graph_snapshot_restore"
+path = "fuzz_targets/graph_snapshot_restore.rs"
+test = false
+doc = false
+bench = false
+
+# 3) 复制协议 v3 帧解码（64MB payload 守卫 / ACK stage 门）
+[[bin]]
+name = "repl_frame_decode"
+path = "fuzz_targets/repl_frame_decode.rs"
+test = false
+doc = false
+bench = false
+
+# 4) pg_wire 前端消息解码
+[[bin]]
+name = "pgwire_message_decode"
+path = "fuzz_targets/pgwire_message_decode.rs"
+test = false
+doc = false
+bench = false

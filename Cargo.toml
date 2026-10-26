@@ -1,0 +1,89 @@
+[workspace]
+members = [
+    "houyi-core",
+    "houyi-vector",
+    "houyi-query",
+    "houyi-persistence",
+    "houyi-server",
+    "houyi-mobile",
+    "sdk/rust/houyidb-client",
+    "houyi-model",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.2.0-beta.5"
+edition = "2021"
+rust-version = "1.87"
+license = "Apache-2.0"
+authors = ["HouyiDB Contributors"]
+
+[workspace.dependencies]
+anyhow = "1"
+async-trait = "0.1"
+rayon = "1"
+parking_lot = "0.12"
+# 安全下限：1.54.1 修复 RUSTSEC-2026-0386（AsyncFd I/O safety）；不要只靠 lockfile。
+tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread", "signal", "sync", "time", "net", "io-util"] }
+axum = { version = "0.8", features = ["macros"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# TOML 配置文件(P4.3.1):--config 加载,合并优先级 CLI > ENV > TOML > default
+toml = "0.8"
+rand = "0.8"
+# OpenAI 兼容网关（houyi-server）：ureq 同步客户端（spawn_blocking 内调用；不引入
+# reqwest/hyper 二套 HTTP 栈，rustls 避免 OpenSSL）。blake2 用于与 Python SDK 一致的
+# stable_id（blake2b-8 大端 & 2^63-1）。
+# ureq 3：2.x 的 webpki-roots 0.26 带 RUSTSEC-2026-0381（信任已泄露的
+# emSign 中间 CA）；3.x 使用修复后的 webpki-roots 1.x。
+ureq = { version = "3", default-features = false, features = ["json", "rustls"] }
+blake2 = "0.10"
+# 审计日志哈希链（P4.7.0）：SHA-256 是审计/合规场景的通用口径。
+sha2 = "0.10"
+# 静态加密（P4.7.3）：AES-256-GCM；zeroize 保证密钥离开作用域即清零。
+aes-gcm = "0.10"
+zeroize = { version = "1", features = ["derive"] }
+# 可观测性(P4.0):库 crate 只经 tracing 发事件,订阅器由 houyi-server 二进制安装。
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+# WAL v2 记录 CRC32 校验(P4.1)
+crc32fast = "1"
+# TLS(P4.2.2):rustls 纯 Rust 栈(避免 OpenSSL 系统依赖,与 ureq 选型同规);
+# 只编 ring provider(不引入 aws-lc-rs 的 C 构建链)。tls12 兼容旧客户端。
+rustls = { version = "0.23", default-features = false, features = ["ring", "logging", "std", "tls12"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "logging", "tls12"] }
+# PEM 解析（RUSTSEC-2025-0134：rustls-pemfile 已停止维护，官方迁移到 pki-types）。
+rustls-pki-types = { version = "1", features = ["std"] }
+# 属性化测试基座(P4.5.0):仅 dev-deps 使用,release 构建与生产依赖图不含。
+# 上提 workspace 是为消除 houyi-persistence / houyi-server 两处版本漂移
+# (同一 dev-dep 声明两份 → 升级时可能只改一处)。
+proptest = "1.12"
+proptest-state-machine = "0.9"
+# 并发调度测试(P4.5.2):shuttle 随机调度 / loom 穷举内存序。上提同 proptest——
+# 同一依赖只声明一份，未来任何 crate 需要时不会漂移版本。
+shuttle = "0.9"
+loom = "0.7"
+# 确定性网络仿真(P4.5.5):tokio 官方的 drop-in net/time 实现。
+turmoil = "0.7"
+# 协议模型检查(P4.5.6)：独立 crate，不进生产依赖图。
+stateright = "0.31"
+
+[workspace.metadata.houyidb-features]
+default = "portable"
+supported = ["portable", "simd-avx2", "simd-neon", "simd-avx512", "cxl-memory", "ha-raft"]
+
+# 生产符号（P4.0.2）：release 保留行表（debug=1 仅行号不含变量），线上 panic /
+# core dump 可定位到源码行；体积代价可接受，移动端 strip 不受影响。
+# （[profile] 仅在 workspace 根生效。）
+[profile.release]
+debug = 1
+
+# 移动端体积优化构建：cargo build --profile mobile -p houyi-mobile
+# （[profile] 仅在 workspace 根生效；服务端 release 构建不受影响。）
+[profile.mobile]
+inherits = "release"
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true

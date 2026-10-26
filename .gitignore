@@ -1,0 +1,29 @@
+# 仅本仓库特有；通用规则见 ~/.gitignore_global（已配置 core.excludesfile）
+storage/
+.cursor/
+target/
+*.parquet
+*.bin
+.claude/
+.DS_Store
+.playwright-mcp/
+
+# 官网静态站；全局 gitignore 默认忽略 site/，本仓库需要跟踪
+!site/
+!site/**
+
+# 知识产权材料与开发日志：不入公开仓库（前缀通配，防未来新文件漏网）
+dev-log.md
+docs/IP_*
+
+# 品牌设计源文件（.ai/.zip 等）；如需展示仅提交导出图
+docs/logo/
+
+# .NET 构建产物（`bin/` 会误伤 Rust 的 src/bin，按目录显式豁免）
+bin/
+obj/
+!**/src/bin/
+
+# Java/Gradle 构建产物
+.gradle/
+build/

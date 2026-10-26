@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HouyiDB 性能实测（2026-10）— 单机、单次运行</title>
+  <meta name="description" content="HouyiDB 自身配置的单机工程测量：1×/2× 连接密度、过滤连续向量缓存、streaming plan/apply。单机、单次运行、非实验室基准。">
+  <meta name="theme-color" content="#0c0b0a">
+  <link rel="canonical" href="https://houyidb.top/performance.html">
+  <link rel="alternate" hreflang="zh-CN" href="https://houyidb.top/performance.html">
+  <link rel="alternate" hreflang="en" href="https://houyidb.top/en/performance.html">
+  <link rel="alternate" hreflang="x-default" href="https://houyidb.top/performance.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="HouyiDB 性能实测（2026-10）">
+  <meta property="og:description" content="只包含 HouyiDB 自身配置的单机工程测量；单机、单次运行、非实验室基准。">
+  <meta property="og:locale" content="zh_CN">
+  <link rel="icon" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <script>document.documentElement.classList.remove('no-js');document.documentElement.classList.add('js');</script>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="pages.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到主要内容 / Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="HouyiDB 首页 / Home">
+        <img class="brand-logo" src="assets/logo-h-zh-red.png" alt="HouyiDB" width="180" height="42">
+      </a>
+
+      <div class="header-right">
+        <nav class="site-nav" id="site-nav" aria-label="主导航 / Main navigation">
+          <a href="index.html"><span class="nav-no">01</span>概览</a>
+          <a href="performance.html" aria-current="page"><span class="nav-no">02</span>性能</a>
+          <a href="docs.html"><span class="nav-no">03</span>文档</a>
+        </nav>
+        <div class="header-tools">
+          <div class="lang-switch" aria-label="语言 / Language">
+            <span aria-current="true" lang="zh-CN">中</span>
+            <a href="en/performance.html" hreflang="en" lang="en">EN</a>
+          </div>
+          <a class="gh-link" href="https://github.com/houyidb-community/houyidb">GitHub ↗</a>
+          <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">菜单</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="wrap page-hero" aria-labelledby="page-title">
+      <div class="page-hero-main">
+        <p class="kicker">Measurements / 2026-10</p>
+        <h1 id="page-title">数字，<span class="accent">以及它们的边界。</span></h1>
+        <p class="lede">这里只放 HouyiDB 自己的单机实测：1×/2× 连接密度、过滤连续向量缓存、streaming plan/apply。没有跨场景总分，也没有外部系统数据。</p>
+        <div class="actions">
+          <a class="btn btn--primary" href="#reproduce">复现步骤 ↓</a>
+          <a class="btn" href="https://github.com/houyidb-community/houyidb/blob/main/VDBBENCH_PROTOCOL.md">VDBBENCH_PROTOCOL.md ↗</a>
+        </div>
+      </div>
+
+      <aside class="page-hero-note" aria-label="数据源与口径 / Source and scope">
+        <h2>Source / 数据源</h2>
+        <dl>
+          <dt>机器</dt><dd>Apple Silicon · 8 核 · 16GB · macOS</dd>
+          <dt>版本</dt><dd>v0.2.0-beta.5 candidate builds</dd>
+          <dt>日期</dt><dd>2026-10-21 → 2026-10-24</dd>
+          <dt>工具</dt><dd>VectorDBBench · k=10 · m=24 · ef_construction=400 · COSINE</dd>
+          <dt>口径</dt><dd>单机 · 单次运行 · 非实验室基准</dd>
+        </dl>
+        <p><a href="https://github.com/houyidb-community/houyidb/blob/main/docs/benchmarks/houyidb-performance-2026-10.md">docs/benchmarks/houyidb-performance-2026-10.md ↗</a></p>
+      </aside>
+    </section>
+
+    <div class="wrap measure-layout">
+      <aside class="toc" aria-label="本页目录 / On this page">
+        <p class="toc-label">On this page</p>
+        <ol>
+          <li><a href="#method"><span class="toc-no">01</span>方法与读法</a></li>
+          <li><a href="#layer0"><span class="toc-no">02</span>1× vs 2×</a></li>
+          <li><a href="#filter"><span class="toc-no">03</span>过滤缓存</a></li>
+          <li><a href="#streaming"><span class="toc-no">04</span>Streaming</a></li>
+          <li><a href="#reproduce"><span class="toc-no">05</span>复现</a></li>
+        </ol>
+      </aside>
+
+      <div class="measure-body">
+        <section class="measure-section" id="method">
+          <h2>先读方法，再读数字。</h2>
+          <p>所有数字来自同一类机器与流程：每个数据集加载一次，随后用 <code>--skip-load</code> 扫描 <code>ef_search</code>；每次加载前清空数据目录并重启数据库。不同表格来自不同日期或代码路径，只能在同一场景内做 A/B，不能拼成一个总分。</p>
+          <p>柱状图按同一图内的最大值归一，只服务于该图内的相对比较；精确数值标注在条末或数值表中。</p>
+          <dl class="facts">
+            <div class="fact"><dt>机器</dt><dd>Apple Silicon (arm64)<br>8 核 · 16GB · macOS · AC</dd></div>
+            <div class="fact"><dt>版本</dt><dd>v0.2.0-beta.5<br>candidate builds</dd></div>
+            <div class="fact"><dt>共同参数</dt><dd>k=10 · m=24<br>ef_construction=400 · COSINE</dd></div>
+            <div class="fact"><dt>并发</dt><dd>1 / 8 / 16 · 每档 30s<br>load_concurrency=8</dd></div>
+          </dl>
+          <div class="callout">
+            <strong>两种 level-0 连接密度。</strong> 2×M 是当前默认：召回优先，兼容已有 2× 图快照。1×M 是高频 QPS 档：召回略低（Cohere 场景约 0.9pp）。两种模式不能在同一份旧图快照上直接切换；切换前确认快照 / WAL 完整，或接受一次全量重放。
+          </div>
+          <p>构图使用 <code>PARALLEL_BATCH_BUILD=1</code>、<code>MAX_BUILD_BATCH=8192</code>、<code>SEED_SERIAL_POINTS=256</code>。完整参数、公平性原则与结果记录模板见 <a href="https://github.com/houyidb-community/houyidb/blob/main/VDBBENCH_PROTOCOL.md">VDBBENCH_PROTOCOL.md ↗</a>。</p>
+        </section>
+
+        <section class="measure-section" id="layer0">
+          <h2>1× vs 2×：速度与召回的交换。</h2>
+          <p>默认 2× 优先召回与旧快照兼容；1× 把 level-0 连接数减半，换取更高 QPS。以下两组数据只做同场景内的 A/B。</p>
+
+          <figure class="figure" id="fig-openai">
+            <figcaption class="figure-head">
+              <span class="figure-no">FIG. 01</span>
+              <div>
+                <h3>OpenAI 1536D / 50K — QPS</h3>
+                <p class="figure-desc">同一数据集、同一天的构建；ef64 给出 conc 8 / 16 两档，ef128 / ef256 为该场景记录的 QPS。两条柱分别为 2×M 与 1×M。</p>
+              </div>
+            </figcaption>
+
+            <div class="bar-chart" role="img" aria-label="OpenAI 1536D 50K QPS 对比：ef64 并发 8 为 426.1 对 686.0；ef64 并发 16 为 400.3 对 680.3；ef128 为 403.9 对 663.5；ef256 为 411.8 对 652.6。2× 在前，1× 在后。">
+              <div class="bar-group">
+                <span class="bar-label">ef64 · conc 8</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--two" style="--w:59.2%"></span></span><span class="bar-num">426.1</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--one" style="--w:95.3%"></span></span><span class="bar-num">686.0</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">ef64 · conc 16</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--two" style="--w:55.6%"></span></span><span class="bar-num">400.3</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--one" style="--w:94.5%"></span></span><span class="bar-num">680.3</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">ef128</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--two" style="--w:56.1%"></span></span><span class="bar-num">403.9</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--one" style="--w:92.2%"></span></span><span class="bar-num">663.5</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">ef256</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--two" style="--w:57.2%"></span></span><span class="bar-num">411.8</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--one" style="--w:90.6%"></span></span><span class="bar-num">652.6</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="legend">
+              <span class="key key--two">2×M（默认）</span>
+              <span class="key key--one">1×M（高 QPS）</span>
+            </div>
+            <p class="figure-note"><strong>同场景补充：</strong>ef64 recall 均为 0.9999；ef64 p99 9.6ms → 6.0ms；加载 81.2s（insert 42.6 + optimize 38.6）→ 57.2s（38.9 + 18.3）。</p>
+
+            <details class="data-toggle">
+              <summary>展开数值表 / Data</summary>
+              <table class="data-table">
+                <caption>OpenAI 1536D / 50K，2026-10-22</caption>
+                <thead><tr><th scope="col">指标</th><th scope="col">2×</th><th scope="col">1×</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">ef64 QPS · c8</th><td>426.1</td><td>686.0</td></tr>
+                  <tr><th scope="row">ef64 QPS · c16</th><td>400.3</td><td>680.3</td></tr>
+                  <tr><th scope="row">ef128 QPS</th><td>403.9</td><td>663.5</td></tr>
+                  <tr><th scope="row">ef256 QPS</th><td>411.8</td><td>652.6</td></tr>
+                  <tr><th scope="row">ef64 recall</th><td>0.9999</td><td>0.9999</td></tr>
+                  <tr><th scope="row">ef64 p99</th><td>9.6ms</td><td>6.0ms</td></tr>
+                  <tr><th scope="row">加载总耗时</th><td>81.2s</td><td>57.2s</td></tr>
+                </tbody>
+              </table>
+            </details>
+          </figure>
+
+          <figure class="figure" id="fig-cohere">
+            <figcaption class="figure-head">
+              <span class="figure-no">FIG. 02</span>
+              <div>
+                <h3>Cohere 768D / 1M — QPS 与召回</h3>
+                <p class="figure-desc">同场景 1M 数据集；2× 来自 2026-10-21，1× 来自 2026-10-22。ef128 / ef256 各给 conc 8 / 16 两档。</p>
+              </div>
+            </figcaption>
+
+            <div class="bar-chart" role="img" aria-label="Cohere 768D 1M QPS 对比：ef128 并发 8 为 610 对 894；ef128 并发 16 为 614 对 864；ef256 并发 8 为 608 对 833；ef256 并发 16 为 627 对 839。召回 2× 为 0.9971，1× 为 0.9883。">
+              <div class="bar-group">
+                <span class="bar-label">ef128 · conc 8</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--two" style="--w:64.2%"></span></span><span class="bar-num">610</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--one" style="--w:94.1%"></span></span><span class="bar-num">894</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">ef128 · conc 16</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--two" style="--w:64.6%"></span></span><span class="bar-num">614</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--one" style="--w:90.9%"></span></span><span class="bar-num">864</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">ef256 · conc 8</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--two" style="--w:64.0%"></span></span><span class="bar-num">608</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--one" style="--w:87.7%"></span></span><span class="bar-num">833</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">ef256 · conc 16</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--two" style="--w:66.0%"></span></span><span class="bar-num">627</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--one" style="--w:88.3%"></span></span><span class="bar-num">839</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="legend">
+              <span class="key key--two">2×M（默认）</span>
+              <span class="key key--one">1×M（高 QPS）</span>
+            </div>
+            <p class="figure-note"><strong>代价：</strong>ef128 / ef256 recall 为 0.9971（2×）对 0.9883（1×），差约 0.9pp；加载 1653.7s（1465.1 + 188.6）→ 1012s（825 + 187）。</p>
+
+            <details class="data-toggle">
+              <summary>展开数值表 / Data</summary>
+              <table class="data-table">
+                <caption>Cohere 768D / 1M，2026-10-21 与 10-22</caption>
+                <thead><tr><th scope="col">指标</th><th scope="col">2×</th><th scope="col">1×</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">ef128 QPS · c8</th><td>610</td><td>894</td></tr>
+                  <tr><th scope="row">ef128 QPS · c16</th><td>614</td><td>864</td></tr>
+                  <tr><th scope="row">ef256 QPS · c8</th><td>608</td><td>833</td></tr>
+                  <tr><th scope="row">ef256 QPS · c16</th><td>627</td><td>839</td></tr>
+                  <tr><th scope="row">ef128 / ef256 recall</th><td>0.9971</td><td>0.9883</td></tr>
+                  <tr><th scope="row">加载总耗时</th><td>1653.7s</td><td>1012s</td></tr>
+                </tbody>
+              </table>
+            </details>
+          </figure>
+
+          <div class="callout">
+            <strong>结论只在同一数据集内成立。</strong> OpenAI 50K 上，1× 的 QPS 提升约 58–64%，召回不变；Cohere 1M 上，1× 的 QPS 更高，但召回低约 0.9pp。默认仍保持 2×；召回敏感场景用 2×，高 QPS 场景显式设 1×。
+          </div>
+        </section>
+
+        <section class="measure-section" id="filter">
+          <h2>过滤缓存：把随机访问变成顺序 SIMD。</h2>
+          <p>在 Cohere 1M、1% labels 的过滤场景里，命中量大时 HouyiDB 会按标签惰性构建连续向量缓存（Cosine 预先单位化），查询退化为顺序 SIMD 扫描 + top-k。两种路径的 recall 均保持 1.0000。</p>
+
+          <figure class="figure" id="fig-filter">
+            <figcaption class="figure-head">
+              <span class="figure-no">FIG. 03</span>
+              <div>
+                <h3>Label filter — Cohere 1M（1% labels）</h3>
+                <p class="figure-desc">旧路径为 2×（2026-10-22）；新路径为 1× + 连续向量缓存（2026-10-23 复测）。</p>
+              </div>
+            </figcaption>
+
+            <div class="bar-chart" role="img" aria-label="过滤缓存 QPS 对比：ef128 并发 8 为 697 对 1161.9；ef128 并发 16 为 698 对 907.3；ef256 并发 8 为 688 对 1176.4；ef256 并发 16 为 747 对 784.2。旧路径在前，缓存路径在后。">
+              <div class="bar-group">
+                <span class="bar-label">ef128 · conc 8</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--base" style="--w:55.8%"></span></span><span class="bar-num">697</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--cache" style="--w:93.0%"></span></span><span class="bar-num">1161.9</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">ef128 · conc 16</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--base" style="--w:55.8%"></span></span><span class="bar-num">698</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--cache" style="--w:72.6%"></span></span><span class="bar-num">907.3</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">ef256 · conc 8</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--base" style="--w:55.0%"></span></span><span class="bar-num">688</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--cache" style="--w:94.1%"></span></span><span class="bar-num">1176.4</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">ef256 · conc 16</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--base" style="--w:59.8%"></span></span><span class="bar-num">747</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--cache" style="--w:62.7%"></span></span><span class="bar-num">784.2</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="legend">
+              <span class="key key--base">旧路径（2×）</span>
+              <span class="key key--cache">1× + 连续向量缓存</span>
+            </div>
+            <p class="figure-note"><strong>运行方差：</strong>首次实测曾达 ef128 1361/1365、ef256 1321/1386 QPS；10-23 复测受后台负载影响为 1161.9/1176.4（conc 8）。两次都高于同一实现的旧路径。写入后缓存按批失效重建；超过 256MB 的标签回退旧路径。</p>
+
+            <details class="data-toggle">
+              <summary>展开数值表 / Data</summary>
+              <table class="data-table">
+                <caption>Label filter，Cohere 1M，1% labels</caption>
+                <thead><tr><th scope="col">指标</th><th scope="col">旧路径 2×</th><th scope="col">1× + 缓存</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">ef128 QPS · c8</th><td>697</td><td>1161.9</td></tr>
+                  <tr><th scope="row">ef128 QPS · c16</th><td>698</td><td>907.3</td></tr>
+                  <tr><th scope="row">ef256 QPS · c8</th><td>688</td><td>1176.4</td></tr>
+                  <tr><th scope="row">ef256 QPS · c16</th><td>747</td><td>784.2</td></tr>
+                  <tr><th scope="row">ef128 / ef256 recall</th><td>1.0000</td><td>1.0000</td></tr>
+                  <tr><th scope="row">加载总耗时</th><td>1624.1s</td><td>1301.6s</td></tr>
+                </tbody>
+              </table>
+            </details>
+          </figure>
+        </section>
+
+        <section class="measure-section" id="streaming">
+          <h2>Streaming：把 104 秒压到 3.9 秒。</h2>
+          <p>合图默认「读锁规划 + 短写锁提交」：规划在 HNSW 读锁内并行完成，提交只持短写锁（实测 3–7ms/批），构图期间检索可并发读图。场景为 Cohere 100K、insert_rate=500/s、k=100。</p>
+
+          <figure class="figure" id="fig-checkpoints">
+            <figcaption class="figure-head">
+              <span class="figure-no">FIG. 04</span>
+              <div>
+                <h3>Streaming 检查点到达时间</h3>
+                <p class="figure-desc">50% / 80% / 100% / 110% 检查点的实际到达时间（秒）；实际写入三者均为 200.1s。柱越短，检查点越早到达。</p>
+              </div>
+            </figcaption>
+
+            <div class="bar-chart" role="img" aria-label="Streaming 检查点到达时间：50% 为旧路径 100.8 秒、新 1× 101.0 秒、新 2× 101.0 秒；80% 为 206.3、164.4、165.3 秒；100% 为 211.2、201.0、201.0 秒；110% 为 294.0、282.5、284.5 秒。">
+              <div class="bar-group">
+                <span class="bar-label">检查点 50%</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--old" style="--w:33.6%"></span></span><span class="bar-num">100.8s</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new1" style="--w:33.7%"></span></span><span class="bar-num">101.0s</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new2" style="--w:33.7%"></span></span><span class="bar-num">101.0s</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">检查点 80%</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--old" style="--w:68.8%"></span></span><span class="bar-num">206.3s</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new1" style="--w:54.8%"></span></span><span class="bar-num">164.4s</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new2" style="--w:55.1%"></span></span><span class="bar-num">165.3s</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">检查点 100%</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--old" style="--w:70.4%"></span></span><span class="bar-num">211.2s</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new1" style="--w:67.0%"></span></span><span class="bar-num">201.0s</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new2" style="--w:67.0%"></span></span><span class="bar-num">201.0s</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">检查点 110%</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--old" style="--w:98.0%"></span></span><span class="bar-num">294.0s</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new1" style="--w:94.2%"></span></span><span class="bar-num">282.5s</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new2" style="--w:94.8%"></span></span><span class="bar-num">284.5s</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="legend">
+              <span class="key key--old">旧路径 1×（10-22）</span>
+              <span class="key key--new1">新 1×（10-23）</span>
+              <span class="key key--new2">新 2×（10-23）</span>
+            </div>
+            <p class="figure-note"><strong>同场景补充：</strong>optimize 0.07s → 0.01s；成熟 recall（100% / 110%）：旧路径 .988 / .988；新 1× .9876 / .9876；新 2× .996 / .996。100% QPS（c10）：1221 → 1355（新 1×）/ 887（新 2×）。</p>
+
+            <details class="data-toggle">
+              <summary>展开数值表 / Data</summary>
+              <table class="data-table">
+                <caption>Streaming，Cohere 100K，insert_rate=500/s，k=100</caption>
+                <thead><tr><th scope="col">指标</th><th scope="col">旧 1×</th><th scope="col">新 1×</th><th scope="col">新 2×</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">检查点 50%</th><td>100.8s</td><td>101.0s</td><td>101.0s</td></tr>
+                  <tr><th scope="row">检查点 80%</th><td>206.3s</td><td>164.4s</td><td>165.3s</td></tr>
+                  <tr><th scope="row">检查点 100%</th><td>211.2s</td><td>201.0s</td><td>201.0s</td></tr>
+                  <tr><th scope="row">检查点 110%</th><td>294.0s</td><td>282.5s</td><td>284.5s</td></tr>
+                  <tr><th scope="row">成熟 recall 100% / 110%</th><td>.988 / .988</td><td>.9876 / .9876</td><td>.996 / .996</td></tr>
+                  <tr><th scope="row">100% QPS · c10</th><td>1221</td><td>1355</td><td>887</td></tr>
+                  <tr><th scope="row">110% QPS · c10</th><td>1175</td><td>1353</td><td>894</td></tr>
+                  <tr><th scope="row">optimize</th><td>0.07s</td><td>0.01s</td><td>0.01s</td></tr>
+                </tbody>
+              </table>
+            </details>
+          </figure>
+
+          <figure class="figure" id="fig-p99">
+            <figcaption class="figure-head">
+              <span class="figure-no">FIG. 05</span>
+              <div>
+                <h3>50% 阶段 — 1000 条串行查询总耗时</h3>
+                <p class="figure-desc">以旧路径总耗时 104s 为 100%。条末数字为「总耗时 / p99」。</p>
+              </div>
+            </figcaption>
+
+            <div class="bar-chart" role="img" aria-label="Streaming 50% 阶段 1000 条串行查询：旧路径总耗时 104 秒、p99 1.72 秒；新 1× 总耗时 3.9 秒、p99 21 毫秒；新 2× 总耗时 6.3 秒、p99 25 毫秒。">
+              <div class="bar-group">
+                <span class="bar-label">旧路径 1×</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--old" style="--w:100%"></span></span><span class="bar-num">104s / 1.72s</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">新 1×</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new1" style="--w:3.75%"></span></span><span class="bar-num">3.9s / 21ms</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">新 2×</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new2" style="--w:6.06%"></span></span><span class="bar-num">6.3s / 25ms</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="legend">
+              <span class="key key--old">旧路径 1×</span>
+              <span class="key key--new1">新 1×</span>
+              <span class="key key--new2">新 2×</span>
+            </div>
+            <p class="figure-note"><strong>换算：</strong>新路径总耗时约为旧路径的 1/17 – 1/27，p99 约为 1/69 – 1/82。柱子按线性比例绘制，新路径的实际长度很小，数值以标签为准。</p>
+          </figure>
+
+          <div class="callout">
+            <strong>早期 recall 不能跨搜索速度直接比较。</strong> VectorDBBench 的 streaming ground truth 是全集静态的，而写入是数据集行序前缀。CohereSmall 实测 GT@10 可达上限：前 50% 行 0.5030、前 80% 行 0.8031。旧路径 50% recall .954 是因为查询被构图写锁阻塞（1000 条查询耗时 104s），多数查询实际在库接近建完后才执行；新路径 3.9s 跑完，量到的是覆盖率上限（.515 / .826）。成熟 recall 看 100% / 110%。
+          </div>
+
+          <p>新路径的代价是批量建库总墙钟约 +11%（Cohere 1M：1170s vs 1055s）；对加载时间极敏感的场景可设 <code>HOUYI_HNSW_PLAN_APPLY=0</code> 回退旧路径。最终 gate 版本 2026-10-24 复测：检查点 100.95 / 164.69 / 200.90 / 283.25s，recall .5148 / .8307 / .988 / .988，串行 p99 22 / 24.9 / 4.9 / 4.7ms，100/110% QPS 999/1160、980/1214，与上表在运行方差内一致。</p>
+        </section>
+
+        <section class="measure-section" id="reproduce">
+          <h2>复现，以及不要做的事。</h2>
+          <p>完整 case、参数与结果记录模板见 <a href="https://github.com/houyidb-community/houyidb/blob/main/VDBBENCH_PROTOCOL.md">VDBBENCH_PROTOCOL.md ↗</a>。下面是 HouyiDB 侧自测门禁的最短路径。</p>
+
+          <div class="terminal repro-code">
+            <div class="terminal-bar">
+              <span>Terminal / reproduce</span>
+              <span class="terminal-hint">bash</span>
+            </div>
+            <pre><code>export VDB_ROOT=/path/to/VectorDBBench   # 含 HouyiDB 适配器的工作副本
+./scripts/perf_regression_gate.sh vdb
+
+# 高 QPS：1×M
+HOUYI_HNSW_LAYER0_MULT=1 ./scripts/perf_regression_gate.sh vdb
+
+# 对照：回退旧合图路径
+HOUYI_HNSW_PLAN_APPLY=0 ./scripts/perf_regression_gate.sh vdb</code></pre>
+          </div>
+
+          <div class="callout">
+            <strong>注意：</strong>自测门禁会执行 preflight，停止本机旧的 houyi-server、释放开发端口并清理开发 WAL。<strong>生产环境不要执行。</strong> 完整对照流程与 clean-room 约定以协议文档为准。
+          </div>
+
+          <ul class="status-list">
+            <li><strong>不拼总分</strong><span>不同表格来自不同日期或代码路径；每张表只做自身的 A/B。</span></li>
+            <li><strong>不混口径</strong><span>跨机器、模式（1×/2×）、ef_search、并发或接口路径的数字不能直接比较。</span></li>
+            <li><strong>不切旧图</strong><span>不要在旧图快照上直接切换 1×/2×；先确认快照 / WAL 完整或接受全量重放。</span></li>
+            <li><strong>不是基准</strong><span>以上是单机、单次运行的本机工程测量，不代表任何实验室或外部环境的结果。</span></li>
+          </ul>
+
+          <p>数据源：<a href="https://github.com/houyidb-community/houyidb/blob/main/docs/benchmarks/houyidb-performance-2026-10.md">docs/benchmarks/houyidb-performance-2026-10.md ↗</a>。参数与调优旋钮另见 <a href="https://github.com/houyidb-community/houyidb/blob/main/docs/HOUYIDB_SERVER_MANUAL.md">服务端手册 ↗</a>。</p>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a class="brand" href="index.html" aria-label="HouyiDB 首页 / Home">
+        <img class="brand-logo" src="assets/logo-h-zh-red.png" alt="HouyiDB" width="180" height="42">
+      </a>
+          <p>单机、内存优先的向量数据库。Rust / Apache-2.0 / Community edition。本站是纯静态页面，不请求外部字体、图片或 CDN。</p>
+        </div>
+        <div class="footer-col">
+          <h2>站点</h2>
+          <a href="index.html">概览</a>
+          <a href="performance.html">性能实测</a>
+          <a href="docs.html">文档入口</a>
+          <a href="en/performance.html" hreflang="en" lang="en">English</a>
+        </div>
+        <div class="footer-col">
+          <h2>文档</h2>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/docs/USER_MANUAL.md">快速上手</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/docs/DEPLOYMENT_GUIDE.md">部署指南</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/docs/HOUYIDB_SERVER_MANUAL.md">服务端手册</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/docs/EMBEDDING_GUIDE.md">向量化</a>
+        </div>
+        <div class="footer-col">
+          <h2>项目</h2>
+          <a href="https://github.com/houyidb-community/houyidb">GitHub</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/CONTRIBUTING.md">贡献指南</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/SECURITY.md">安全策略</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/LICENSE">Apache-2.0</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 HouyiDB contributors · Community edition</span>
+        <span>单机 · 内存优先 · Rust · pgwire / HTTP</span>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

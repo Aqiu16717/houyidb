@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "langchain-houyidb"
+version = "0.2.0b5"
+description = "LangChain VectorStore adapter for HouyiDB"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "Apache-2.0"
+authors = [{ name = "HouyiDB Contributors" }]
+dependencies = ["langchain-core>=0.3", "houyidb>=0.2.0b5"]
+
+[project.urls]
+Homepage = "https://houyidb.top"
+Repository = "https://github.com/houyidb-community/houyidb"
+Documentation = "https://github.com/houyidb-community/houyidb/blob/main/docs/USER_MANUAL.md"
+
+[tool.setuptools.packages.find]
+include = ["langchain_houyidb*"]

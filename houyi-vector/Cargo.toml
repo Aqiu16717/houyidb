@@ -1,0 +1,41 @@
+[package]
+name = "houyi-vector"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[features]
+default = ["portable", "simd-neon"]
+portable = []
+simd-avx2 = []
+simd-neon = []
+simd-avx512 = []
+cxl-memory = []
+ha-raft = []
+
+[dependencies]
+houyi-core = { path = "../houyi-core", version = "0.2.0-beta.5", default-features = false, features = ["portable"] }
+ahash = "0.8"
+async-trait.workspace = true
+parking_lot.workspace = true
+rayon.workspace = true
+tokio.workspace = true
+rand.workspace = true
+# 可观测性(P4.0)：库 crate 只经 tracing 发事件，订阅器由二进制安装。
+tracing.workspace = true
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["async_tokio"] }
+# P4.5.3 检索 oracle：随机数据集 + metamorphic 关系（k 前缀/幂等/删除不可见）
+# 与 brute-force 差分对照（tests/retrieval_oracle.rs）。
+proptest.workspace = true
+
+[[bench]]
+name = "vector_baseline"
+harness = false
+
+[[example]]
+name = "recall_gate"
+path = "examples/recall_gate.rs"

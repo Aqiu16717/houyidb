@@ -1,0 +1,28 @@
+[package]
+name = "houyi-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[features]
+default = ["portable"]
+portable = []
+simd-avx512 = []
+cxl-memory = []
+ha-raft = []
+
+[dependencies]
+anyhow.workspace = true
+crossbeam-queue = "0.3.12"
+libc = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# 可观测性(P4.0)：库 crate 只经 tracing 发事件，订阅器由二进制安装。
+tracing.workspace = true
+
+[dev-dependencies]
+# P4.5.3 过滤 oracle：随机页 + 随机谓词树与**独立参考实现**做差分对照
+# （tests/filter_oracle.rs），并用三分区（TLP）属性把「命中集」与「补集」交叉验证。
+proptest.workspace = true

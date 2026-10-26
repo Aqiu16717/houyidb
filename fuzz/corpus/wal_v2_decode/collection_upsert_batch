@@ -1,0 +1,1 @@
+{"v":1,"op":"collection_upsert_batch","name":"items","dims":2,"items":[{"id":1,"values":[0.1,0.2],"label":"a","payload":{"n":7,"t":"x"}},{"id":2,"values":[0.3,0.4]}]}

@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 4568508a8314098db58de8f64e2624dd70178ad58687a81852ed1787f0badcf4 # shrinks to shapes = [(None, "a")], filters = [TlpFilter { column: "tag", op: "in", value: Array [String("a")] }], seed = 0
+cc 4c231b13449b148451a0da2f2cfdd5d449d40030309a8c04b980b1ea43df672b # shrinks to shapes = [(None, "a")], filters = [TlpFilter { column: "tag", op: "in", value: Array [String("a")] }], seed = 0
+cc 7f2d91a5d89e56498d86e5b3d680d0bc4f38efc49af814e4690828acdde24adc # shrinks to shapes = [(None, "a"), (None, "a")], filters = [TlpFilter { column: "tag", op: "in", value: Array [String("a")] }], victim_pick = Index(0), seed = 1949304

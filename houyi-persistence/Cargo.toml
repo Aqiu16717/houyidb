@@ -1,0 +1,76 @@
+[package]
+name = "houyi-persistence"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[features]
+# P4.5.1：向独立 fuzz workspace 暴露字节切片解析入口（cargo-fuzz 目标无法访问
+# pub(crate) 项）。默认关闭——release 构建与生产路径不含此模块。
+fuzz-api = []
+# P4.5.2：把 `replication_leader.rs` 的并发原语换型到 shuttle，用随机调度穷举
+# ShipHub 扇出 / AckWatermarks 唤醒交错的缺陷。
+#
+# 边界（重要）：**只有该文件**换型，其余模块保持 std，且 `Arc` 从不换型
+# （引用计数不是阻塞原语）。故本 feature 只改变该文件的**通道/锁类型选择**
+# （`ShipHub::register` 返回的 Receiver 等）。它只服务过滤测试：
+#     cargo test -p houyi-persistence --features shuttle --lib shuttle_
+#
+# **禁止的调用方式**（都会把换型层带进不该去的构建）：
+#   - `--all-features`：会静默启用本 feature；
+#   - `cargo test --workspace --features shuttle` / 任何 workspace 级 feature 传递：
+#     feature 统一化会把换型后的会话 API 推到 houyi-server（其 std 类型冲突），
+#     且在真实 OS 线程上访问 shuttle 原语会 immediate panic；
+#   - 任何非 `--lib` 的测试目标（集成测试会以非 cfg(test) 编译本 crate）。
+# `replication_leader.rs` 顶部有 `compile_error!` 护栏，上述误用会**编译期失败**
+# 而不是运行期才炸。CI/日常门禁只用默认 features。
+shuttle = ["dep:shuttle"]
+# P4.5.4 crash chaos：故障注入点（本 crate `failpoint` 模块）。未启用时注入点
+# 是内联空操作，生产构建（默认 features）开销严格为零。演练脚本
+# `scripts/chaos_drill.sh` 以 `--features failpoints` 构建 houyi-server。
+failpoints = []
+# P4.5.5 turmoil 确定性网络仿真：把复制层的 `tokio::net` / `tokio::time`
+# 换型为 turmoil 的 drop-in 实现（仿真网络与模拟时钟）。仅在集成测试构建里
+# 启用（houyi-server/tests/turmoil_replication.rs 的 dev-dependency），生产
+# 依赖图不含。
+turmoil = ["dep:turmoil"]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+# P4.5.5：复制层网络 IO 迁到 tokio（turmoil DST 的前提，顺带用 task 取消
+# 根治 wedged writer 线程泄漏）。wal worker 仍为 std 线程，只经有界通道交互。
+tokio = { workspace = true }
+# 复制 apply 回调：trait 方法要 async（follower 已是 tokio task）。
+async-trait.workspace = true
+# 仿真网络/时钟（可选，见 feature `turmoil`）。
+turmoil = { workspace = true, optional = true }
+# 可观测性(P4.0)：库 crate 只经 tracing 发事件，订阅器由二进制安装。
+tracing.workspace = true
+# WAL v2 记录校验（P4.1）：CRC32(IEEE) 每条记录，撕裂写/位腐烂在重放期可检测。
+crc32fast.workspace = true
+# 静态加密（P4.7.3）：WAL v3 / 快照 v2 的 AEAD 与本地 keyring。
+aes-gcm.workspace = true
+zeroize.workspace = true
+rand.workspace = true
+# P4.5.2 确定性调度（可选，见 feature `shuttle`）。
+shuttle = { workspace = true, optional = true }
+
+# loom 经 `RUSTFLAGS="--cfg loom"` 激活（**必须**是 cfg，不能是 cargo feature）：
+# loom crate 的 `model()` 只在它自己被 `--cfg loom` 编译时做穷举，feature 只换
+# 我们自己的类型、不会激活模型检查（会静默退化为单次执行）。
+# 代价：全局 cfg 会关掉 tokio 的 `net` 模块（tokio 源码有 `#[cfg(not(loom))]
+# pub mod net`）——故复制层的网络/会话代码全部用 `#[cfg(not(loom))]` 门控。
+[target.'cfg(loom)'.dependencies]
+loom = { workspace = true }
+
+# `cfg(loom)` 由 RUSTFLAGS 注入，非 cargo 已知 cfg；登记以免 unexpected_cfgs 报错。
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(loom)'] }
+
+[dev-dependencies]
+# P4.5.0 属性化测试基座（WAL/复制帧编解码纪律）。本 crate 只有纯编解码属性，
+# 恢复状态机（proptest-state-machine）落在 houyi-server——依赖不在此声明。
+proptest.workspace = true

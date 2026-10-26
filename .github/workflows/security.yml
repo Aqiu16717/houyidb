@@ -1,0 +1,85 @@
+name: Security
+
+# 供应链体检（P4.8，S9）：漏洞库、许可证/依赖策略、SBOM。
+# 定时触发不可省：CVE 每天新增，代码没变也可能在夜里变成“有已知漏洞”。
+# EN: supply-chain checks. The schedule is essential — advisories change daily.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # 非整点，避开公共 CI 高峰。
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+# Linux runner 固定 Ubuntu 24.04：ubuntu-latest 会随 GitHub 镜像迁移漂移
+# （2026-10 起迁 Ubuntu 26），固定后升级由我们显式决定。
+jobs:
+  community-boundary:
+    name: Community boundary (open-core)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check open-core boundary
+        run: ./scripts/community_boundary_check.sh
+
+  supply-chain:
+    name: Supply chain (audit / deny / SBOM)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+
+      # 工具二进制缓存：首次安装较慢，后续 job 直接复用。
+      - name: Cache cargo tool binaries
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-security-tools-${{ hashFiles('**/Cargo.lock', 'deny.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-security-tools-
+
+      - name: Install tools
+        run: |
+          for tool in cargo-audit cargo-deny cargo-cyclonedx; do
+            if ! command -v "$tool" >/dev/null 2>&1; then
+              cargo install "$tool" --locked
+            fi
+          done
+
+      # RustSec 漏洞库：直接/间接依赖全部覆盖；发现漏洞即失败。
+      - name: cargo audit (RustSec advisories)
+        run: cargo audit
+
+      # 许可证 / 重复版本 / 未知源 / 通配依赖策略。
+      - name: cargo deny (policy)
+        run: cargo deny --all-features check
+
+      # CycloneDX SBOM：客户/审计索要的软件物料清单，随构建归档。
+      - name: Generate SBOM (CycloneDX)
+        run: |
+          mkdir -p target/sbom
+          # cargo-cyclonedx 把文件写到包目录；生成后移入 target/sbom 供归档。
+          cargo cyclonedx --manifest-path houyi-server/Cargo.toml \
+            --format json --override-filename houyidb.cdx
+          mv houyi-server/houyidb.cdx.json target/sbom/houyidb.cdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: houyidb-sbom
+          path: target/sbom/houyidb.cdx.json
+          if-no-files-found: error
+          retention-days: 90

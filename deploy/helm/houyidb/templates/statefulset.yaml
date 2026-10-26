@@ -1,0 +1,173 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "houyidb.fullname" . }}
+  labels:
+    {{- include "houyidb.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "houyidb.fullname" . }}-headless
+  # v1 无自动选主：固定单副本；HA 用两个 release（leader/follower）。
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "houyidb.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "houyidb.selectorLabels" . | nindent 8 }}
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: houyidb
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          args:
+            - --config
+            - /etc/houyidb/config.toml
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.httpPort }}
+            - name: pgwire
+              containerPort: {{ .Values.service.pgwirePort }}
+            - name: replication
+              containerPort: {{ .Values.service.replicationPort }}
+          env:
+            - name: HOUYI_SERVER_BENCHMARK_HTTP_ADDR
+              value: "0.0.0.0:{{ .Values.service.httpPort }}"
+            - name: HOUYI_SERVER_PGWIRE_ADDR
+              value: "0.0.0.0:{{ .Values.service.pgwirePort }}"
+            - name: HOUYI_SERVER_WAL_PATH
+              value: /data/houyidb.wal
+            - name: HOUYI_CONFIG
+              value: /etc/houyidb/config.toml
+            {{- if .Values.auth.legacyTokenSecret }}
+            - name: HOUYI_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.auth.legacyTokenSecret }}
+                  key: {{ .Values.auth.legacyTokenKey }}
+            {{- end }}
+            {{- if .Values.replication.authTokenSecret }}
+            - name: HOUYI_SERVER_REPLICATION_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.replication.authTokenSecret }}
+                  key: replication-auth-token
+            {{- end }}
+            {{- if .Values.encryption.existingSecret }}
+            - name: HOUYI_SERVER_ENCRYPTION_KEY_FILE
+              value: /etc/houyidb/keys/keyring
+            {{- if .Values.encryption.activeKeyId }}
+            - name: HOUYI_SERVER_ENCRYPTION_KEY_ID
+              value: {{ .Values.encryption.activeKeyId | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.tls.enabled }}
+            - name: HOUYI_TLS_CERT
+              value: /etc/houyidb/tls/tls.crt
+            - name: HOUYI_TLS_KEY
+              value: /etc/houyidb/tls/tls.key
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            {{- toYaml .Values.probes.readiness | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /v1/health
+              port: http
+            {{- toYaml .Values.probes.liveness | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+            - name: config
+              mountPath: /etc/houyidb
+              readOnly: true
+            {{- if .Values.encryption.existingSecret }}
+            - name: keyring
+              mountPath: /etc/houyidb/keys
+              readOnly: true
+            {{- end }}
+            {{- if .Values.tls.enabled }}
+            - name: tls
+              mountPath: /etc/houyidb/tls
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        {{- if .Values.config.existingSecret }}
+        - name: config
+          secret:
+            secretName: {{ .Values.config.existingSecret }}
+            items:
+              - key: config.toml
+                path: config.toml
+        {{- else }}
+        - name: config
+          configMap:
+            name: {{ include "houyidb.fullname" . }}-config
+        {{- end }}
+        {{- if .Values.encryption.existingSecret }}
+        - name: keyring
+          secret:
+            secretName: {{ .Values.encryption.existingSecret }}
+            defaultMode: 0400
+            items:
+              - key: keyring
+                path: keyring
+        {{- end }}
+        {{- if .Values.tls.enabled }}
+        - name: tls
+          secret:
+            secretName: {{ .Values.tls.existingSecret }}
+            items:
+              - key: tls.crt
+                path: tls.crt
+              - key: tls.key
+                path: tls.key
+        {{- end }}
+        {{- if not .Values.persistence.enabled }}
+        - name: data
+          emptyDir: {}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          {{- toYaml .Values.persistence.accessModes | nindent 10 }}
+        {{- if .Values.persistence.storageClass }}
+        storageClassName: {{ .Values.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size }}
+  {{- end }}

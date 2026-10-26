@@ -1,0 +1,118 @@
+# HouyiDB Helm values（P4.8 / O6）。
+# 单 release 运行单节点；主备 = leader release + follower release（role 不同，
+# follower 用 replication.leaderAddr 指向 leader 的 Service）。不要用副本数
+# 伪装成集群：v1 无自动选主，多副本会变成多个独立单机。
+# EN: one release = one node. HA = two releases (leader + follower), because
+# v1 has manual failover only; replicaCount > 1 is NOT a cluster.
+
+image:
+  repository: ghcr.io/houyidb-community/houyidb
+  tag: "v0.2.0-beta.5"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# disabled | leader | follower
+role: disabled
+
+replication:
+  # follower 必填：leader 的 replication Service 地址，如 houyidb-leader:9876
+  leaderAddr: ""
+  queueBatches: 4096
+  syncTimeoutMs: 2000
+  # Secret（key: replication-auth-token）——leader/follower 必须一致
+  authTokenSecret: ""
+
+server:
+  vectorDim: 1536
+  indexType: hnsw
+  walWriteMode: async          # 复制要求 async
+  snapshotIntervalSecs: 600
+  snapshotWalThresholdBytes: 268435456
+  defaultHaLevel: async        # async | semi_sync | full_sync
+  metricsIntervalSecs: 1
+  audit:
+    enabled: false
+    includeReads: false
+    maxBytes: 268435456
+
+# 完整 TOML 配置（含 RBAC token / principals）走 Secret，避免把凭据写进
+# values.yaml。设置后覆盖上面的非敏感 ConfigMap。
+# EN: full config.toml in a Secret (keys: config.toml); overrides ConfigMap.
+config:
+  existingSecret: ""
+
+# legacy 全权 admin token（可选；RBAC 用户请用 config.existingSecret）
+auth:
+  legacyTokenSecret: ""
+  legacyTokenKey: auth-token
+
+# AES-256-GCM keyring（可选）。Secret key: keyring（每行 id=hex）
+encryption:
+  existingSecret: ""
+  activeKeyId: ""
+
+# TLS（可选）。Secret keys: tls.crt / tls.key
+tls:
+  enabled: false
+  existingSecret: ""
+
+persistence:
+  enabled: true
+  size: 50Gi
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+
+service:
+  type: ClusterIP
+  httpPort: 7000
+  pgwirePort: 5432
+  replicationPort: 9876
+
+resources: {}
+  # requests:
+  #   cpu: "2"
+  #   memory: 4Gi
+  # limits:
+  #   memory: 8Gi
+
+probes:
+  readiness:
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 6
+  liveness:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 6
+
+podAnnotations: {}
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+monitoring:
+  prometheusRule:
+    enabled: false
+    # 直接粘贴 deploy/prometheus/houyidb-alerts.yml 的 groups 数组。
+    groups: []
+

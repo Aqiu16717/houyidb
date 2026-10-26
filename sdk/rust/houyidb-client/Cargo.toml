@@ -1,0 +1,20 @@
+[package]
+name = "houyidb-client"
+description = "Official Rust client for HouyiDB vector database (collections HTTP API)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository = "https://github.com/houyidb-community/houyidb"
+homepage = "https://houyidb.top"
+documentation = "https://docs.rs/houyidb-client"
+readme = "README.md"
+keywords = ["vector-database", "hnsw", "embeddings", "rag"]
+categories = ["database"]
+
+[dependencies]
+ureq.workspace = true
+blake2.workspace = true
+serde.workspace = true
+serde_json.workspace = true

@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HouyiDB measurements (2026-10) — single machine, single run</title>
+  <meta name="description" content="Single-machine engineering measurements of HouyiDB configurations: 1×/2× connectivity, contiguous-vector filter cache, and streaming plan/apply. Single machine, single run, not a lab benchmark.">
+  <meta name="theme-color" content="#0c0b0a">
+  <link rel="canonical" href="https://houyidb.top/en/performance.html">
+  <link rel="alternate" hreflang="zh-CN" href="https://houyidb.top/performance.html">
+  <link rel="alternate" hreflang="en" href="https://houyidb.top/en/performance.html">
+  <link rel="alternate" hreflang="x-default" href="https://houyidb.top/performance.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="HouyiDB measurements (2026-10)">
+  <meta property="og:description" content="Only HouyiDB's own single-machine engineering measurements; single machine, single run, not a lab benchmark.">
+  <meta property="og:locale" content="en_US">
+  <link rel="icon" href="../assets/favicon.png">
+  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+  <script>document.documentElement.classList.remove('no-js');document.documentElement.classList.add('js');</script>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../pages.css">
+  <script src="../app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="HouyiDB home">
+        <img class="brand-logo" src="../assets/logo-h-en-red.png" alt="HouyiDB" width="180" height="42">
+      </a>
+
+      <div class="header-right">
+        <nav class="site-nav" id="site-nav" aria-label="Main navigation">
+          <a href="index.html"><span class="nav-no">01</span>Overview</a>
+          <a href="performance.html" aria-current="page"><span class="nav-no">02</span>Performance</a>
+          <a href="docs.html"><span class="nav-no">03</span>Docs</a>
+        </nav>
+        <div class="header-tools">
+          <div class="lang-switch" aria-label="Language">
+            <a href="../performance.html" hreflang="zh-CN" lang="zh-CN">中</a>
+            <span aria-current="true" lang="en">EN</span>
+          </div>
+          <a class="gh-link" href="https://github.com/houyidb-community/houyidb">GitHub ↗</a>
+          <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="wrap page-hero" aria-labelledby="page-title">
+      <div class="page-hero-main">
+        <p class="kicker">Measurements / 2026-10</p>
+        <h1 id="page-title">Numbers, <span class="accent">and their edges.</span></h1>
+        <p class="lede">Only HouyiDB's own single-machine measurements: 1×/2× connectivity, a contiguous-vector filter cache, and streaming plan/apply. No combined score, no external-system data.</p>
+        <div class="actions">
+          <a class="btn btn--primary" href="#reproduce">Reproduction steps ↓</a>
+          <a class="btn" href="https://github.com/houyidb-community/houyidb/blob/main/VDBBENCH_PROTOCOL.en.md">VDBBENCH_PROTOCOL.en.md ↗</a>
+        </div>
+      </div>
+
+      <aside class="page-hero-note" aria-label="Source and scope">
+        <h2>Source</h2>
+        <dl>
+          <dt>Machine</dt><dd>Apple Silicon · 8 cores · 16GB · macOS</dd>
+          <dt>Version</dt><dd>v0.2.0-beta.5 candidate builds</dd>
+          <dt>Dates</dt><dd>2026-10-21 → 2026-10-24</dd>
+          <dt>Tool</dt><dd>VectorDBBench · k=10 · m=24 · ef_construction=400 · COSINE</dd>
+          <dt>Scope</dt><dd>Single machine · single run · not a lab benchmark</dd>
+        </dl>
+        <p><a href="https://github.com/houyidb-community/houyidb/blob/main/docs/benchmarks/houyidb-performance-2026-10.en.md">docs/benchmarks/houyidb-performance-2026-10.en.md ↗</a></p>
+      </aside>
+    </section>
+
+    <div class="wrap measure-layout">
+      <aside class="toc" aria-label="On this page">
+        <p class="toc-label">On this page</p>
+        <ol>
+          <li><a href="#method"><span class="toc-no">01</span>Method &amp; reading</a></li>
+          <li><a href="#layer0"><span class="toc-no">02</span>1× vs 2×</a></li>
+          <li><a href="#filter"><span class="toc-no">03</span>Filter cache</a></li>
+          <li><a href="#streaming"><span class="toc-no">04</span>Streaming</a></li>
+          <li><a href="#reproduce"><span class="toc-no">05</span>Reproduction</a></li>
+        </ol>
+      </aside>
+
+      <div class="measure-body">
+        <section class="measure-section" id="method">
+          <h2>Read the method before the numbers.</h2>
+          <p>All figures come from the same class of machine and process: each dataset is loaded once, then <code>ef_search</code> is swept with <code>--skip-load</code>; the data directory is cleared and the server restarted before every load. Different tables come from different dates or code paths, so they are A/B comparisons within one scenario, never a combined score.</p>
+          <p>Bars are normalized to the maximum value within their own figure and serve only relative comparison inside that figure; exact values are printed at the end of each bar or in the data table.</p>
+          <dl class="facts">
+            <div class="fact"><dt>Machine</dt><dd>Apple Silicon (arm64)<br>8 cores · 16GB · macOS · AC</dd></div>
+            <div class="fact"><dt>Version</dt><dd>v0.2.0-beta.5<br>candidate builds</dd></div>
+            <div class="fact"><dt>Shared parameters</dt><dd>k=10 · m=24<br>ef_construction=400 · COSINE</dd></div>
+            <div class="fact"><dt>Concurrency</dt><dd>1 / 8 / 16 · 30s each<br>load_concurrency=8</dd></div>
+          </dl>
+          <div class="callout">
+            <strong>Two level-0 connectivity modes.</strong> 2×M is the current default: recall-first, compatible with existing 2× graph snapshots. 1×M is the high-QPS mode: slightly lower recall (about 0.9pp on Cohere). Do not switch modes on an existing graph snapshot; confirm snapshot / WAL integrity first or accept a full replay.
+          </div>
+          <p>Build tuning uses <code>PARALLEL_BATCH_BUILD=1</code>, <code>MAX_BUILD_BATCH=8192</code>, and <code>SEED_SERIAL_POINTS=256</code>. Full parameters, fairness rules, and the result-record template are in <a href="https://github.com/houyidb-community/houyidb/blob/main/VDBBENCH_PROTOCOL.en.md">VDBBENCH_PROTOCOL.en.md ↗</a>.</p>
+        </section>
+
+        <section class="measure-section" id="layer0">
+          <h2>1× vs 2×: speed traded for recall.</h2>
+          <p>The default 2× prioritizes recall and compatibility with existing snapshots; 1× halves level-0 connectivity for higher QPS. Both datasets below are A/B comparisons inside their own scenario.</p>
+
+          <figure class="figure" id="fig-openai">
+            <figcaption class="figure-head">
+              <span class="figure-no">FIG. 01</span>
+              <div>
+                <h3>OpenAI 1536D / 50K — QPS</h3>
+                <p class="figure-desc">Same dataset, same-day builds; ef64 has conc 8 / 16, while ef128 / ef256 show the QPS recorded for this scenario. Bars are 2×M then 1×M.</p>
+              </div>
+            </figcaption>
+
+            <div class="bar-chart" role="img" aria-label="OpenAI 1536D 50K QPS comparison: ef64 concurrency 8 is 426.1 versus 686.0; ef64 concurrency 16 is 400.3 versus 680.3; ef128 is 403.9 versus 663.5; ef256 is 411.8 versus 652.6. 2× first, 1× second.">
+              <div class="bar-group">
+                <span class="bar-label">ef64 · conc 8</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--two" style="--w:59.2%"></span></span><span class="bar-num">426.1</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--one" style="--w:95.3%"></span></span><span class="bar-num">686.0</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">ef64 · conc 16</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--two" style="--w:55.6%"></span></span><span class="bar-num">400.3</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--one" style="--w:94.5%"></span></span><span class="bar-num">680.3</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">ef128</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--two" style="--w:56.1%"></span></span><span class="bar-num">403.9</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--one" style="--w:92.2%"></span></span><span class="bar-num">663.5</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">ef256</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--two" style="--w:57.2%"></span></span><span class="bar-num">411.8</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--one" style="--w:90.6%"></span></span><span class="bar-num">652.6</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="legend">
+              <span class="key key--two">2×M (default)</span>
+              <span class="key key--one">1×M (high QPS)</span>
+            </div>
+            <p class="figure-note"><strong>Same-scenario notes:</strong> ef64 recall is 0.9999 for both; ef64 p99 goes from 9.6ms to 6.0ms; load drops from 81.2s (insert 42.6 + optimize 38.6) to 57.2s (38.9 + 18.3).</p>
+
+            <details class="data-toggle">
+              <summary>Show data table</summary>
+              <table class="data-table">
+                <caption>OpenAI 1536D / 50K, 2026-10-22</caption>
+                <thead><tr><th scope="col">Metric</th><th scope="col">2×</th><th scope="col">1×</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">ef64 QPS · c8</th><td>426.1</td><td>686.0</td></tr>
+                  <tr><th scope="row">ef64 QPS · c16</th><td>400.3</td><td>680.3</td></tr>
+                  <tr><th scope="row">ef128 QPS</th><td>403.9</td><td>663.5</td></tr>
+                  <tr><th scope="row">ef256 QPS</th><td>411.8</td><td>652.6</td></tr>
+                  <tr><th scope="row">ef64 recall</th><td>0.9999</td><td>0.9999</td></tr>
+                  <tr><th scope="row">ef64 p99</th><td>9.6ms</td><td>6.0ms</td></tr>
+                  <tr><th scope="row">Load duration</th><td>81.2s</td><td>57.2s</td></tr>
+                </tbody>
+              </table>
+            </details>
+          </figure>
+
+          <figure class="figure" id="fig-cohere">
+            <figcaption class="figure-head">
+              <span class="figure-no">FIG. 02</span>
+              <div>
+                <h3>Cohere 768D / 1M — QPS and recall</h3>
+                <p class="figure-desc">Same 1M dataset scenario; 2× was built on 2026-10-21 and 1× on 2026-10-22. ef128 / ef256 each have conc 8 / 16.</p>
+              </div>
+            </figcaption>
+
+            <div class="bar-chart" role="img" aria-label="Cohere 768D 1M QPS comparison: ef128 concurrency 8 is 610 versus 894; ef128 concurrency 16 is 614 versus 864; ef256 concurrency 8 is 608 versus 833; ef256 concurrency 16 is 627 versus 839. Recall is 0.9971 for 2× and 0.9883 for 1×.">
+              <div class="bar-group">
+                <span class="bar-label">ef128 · conc 8</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--two" style="--w:64.2%"></span></span><span class="bar-num">610</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--one" style="--w:94.1%"></span></span><span class="bar-num">894</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">ef128 · conc 16</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--two" style="--w:64.6%"></span></span><span class="bar-num">614</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--one" style="--w:90.9%"></span></span><span class="bar-num">864</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">ef256 · conc 8</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--two" style="--w:64.0%"></span></span><span class="bar-num">608</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--one" style="--w:87.7%"></span></span><span class="bar-num">833</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">ef256 · conc 16</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--two" style="--w:66.0%"></span></span><span class="bar-num">627</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--one" style="--w:88.3%"></span></span><span class="bar-num">839</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="legend">
+              <span class="key key--two">2×M (default)</span>
+              <span class="key key--one">1×M (high QPS)</span>
+            </div>
+            <p class="figure-note"><strong>The trade-off:</strong> ef128 / ef256 recall is 0.9971 (2×) versus 0.9883 (1×), about 0.9pp lower; load goes from 1653.7s (1465.1 + 188.6) to 1012s (825 + 187).</p>
+
+            <details class="data-toggle">
+              <summary>Show data table</summary>
+              <table class="data-table">
+                <caption>Cohere 768D / 1M, 2026-10-21 and 10-22</caption>
+                <thead><tr><th scope="col">Metric</th><th scope="col">2×</th><th scope="col">1×</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">ef128 QPS · c8</th><td>610</td><td>894</td></tr>
+                  <tr><th scope="row">ef128 QPS · c16</th><td>614</td><td>864</td></tr>
+                  <tr><th scope="row">ef256 QPS · c8</th><td>608</td><td>833</td></tr>
+                  <tr><th scope="row">ef256 QPS · c16</th><td>627</td><td>839</td></tr>
+                  <tr><th scope="row">ef128 / ef256 recall</th><td>0.9971</td><td>0.9883</td></tr>
+                  <tr><th scope="row">Load duration</th><td>1653.7s</td><td>1012s</td></tr>
+                </tbody>
+              </table>
+            </details>
+          </figure>
+
+          <div class="callout">
+            <strong>These conclusions hold only within each dataset.</strong> On OpenAI 50K, 1× raises QPS by roughly 58–64% with unchanged recall. On Cohere 1M, 1× has higher QPS but about 0.9pp lower recall. The default remains 2×; use 2× when recall matters and set 1× explicitly for high-QPS workloads.
+          </div>
+        </section>
+
+        <section class="measure-section" id="filter">
+          <h2>Filter cache: random access becomes sequential SIMD.</h2>
+          <p>In the Cohere 1M, 1%-labels filter scenario, HouyiDB lazily builds a contiguous vector cache per label when a filter hits many rows (Cosine vectors are pre-normalized), so the query degrades to a sequential SIMD scan plus top-k. Recall stays at 1.0000 on both paths.</p>
+
+          <figure class="figure" id="fig-filter">
+            <figcaption class="figure-head">
+              <span class="figure-no">FIG. 03</span>
+              <div>
+                <h3>Label filter — Cohere 1M (1% labels)</h3>
+                <p class="figure-desc">Old path is 2× (2026-10-22); new path is 1× plus the contiguous-vector cache (2026-10-23 rerun).</p>
+              </div>
+            </figcaption>
+
+            <div class="bar-chart" role="img" aria-label="Filter cache QPS comparison: ef128 concurrency 8 is 697 versus 1161.9; ef128 concurrency 16 is 698 versus 907.3; ef256 concurrency 8 is 688 versus 1176.4; ef256 concurrency 16 is 747 versus 784.2. Old path first, cached path second.">
+              <div class="bar-group">
+                <span class="bar-label">ef128 · conc 8</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--base" style="--w:55.8%"></span></span><span class="bar-num">697</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--cache" style="--w:93.0%"></span></span><span class="bar-num">1161.9</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">ef128 · conc 16</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--base" style="--w:55.8%"></span></span><span class="bar-num">698</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--cache" style="--w:72.6%"></span></span><span class="bar-num">907.3</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">ef256 · conc 8</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--base" style="--w:55.0%"></span></span><span class="bar-num">688</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--cache" style="--w:94.1%"></span></span><span class="bar-num">1176.4</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">ef256 · conc 16</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--base" style="--w:59.8%"></span></span><span class="bar-num">747</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--cache" style="--w:62.7%"></span></span><span class="bar-num">784.2</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="legend">
+              <span class="key key--base">Old path (2×)</span>
+              <span class="key key--cache">1× + cache</span>
+            </div>
+            <p class="figure-note"><strong>Run variance:</strong> the first run reached ef128 1361/1365 and ef256 1321/1386 QPS; the 10-23 rerun was affected by background load and measured 1161.9/1176.4 at conc 8. Both runs exceed the old path in the same implementation. The cache is invalidated and rebuilt in batches after writes; labels above 256MB fall back to the old path.</p>
+
+            <details class="data-toggle">
+              <summary>Show data table</summary>
+              <table class="data-table">
+                <caption>Label filter, Cohere 1M, 1% labels</caption>
+                <thead><tr><th scope="col">Metric</th><th scope="col">Old 2×</th><th scope="col">1× + cache</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">ef128 QPS · c8</th><td>697</td><td>1161.9</td></tr>
+                  <tr><th scope="row">ef128 QPS · c16</th><td>698</td><td>907.3</td></tr>
+                  <tr><th scope="row">ef256 QPS · c8</th><td>688</td><td>1176.4</td></tr>
+                  <tr><th scope="row">ef256 QPS · c16</th><td>747</td><td>784.2</td></tr>
+                  <tr><th scope="row">ef128 / ef256 recall</th><td>1.0000</td><td>1.0000</td></tr>
+                  <tr><th scope="row">Load duration</th><td>1624.1s</td><td>1301.6s</td></tr>
+                </tbody>
+              </table>
+            </details>
+          </figure>
+        </section>
+
+        <section class="measure-section" id="streaming">
+          <h2>Streaming: 104 seconds down to 3.9.</h2>
+          <p>Graph merge defaults to "plan under a read lock, commit under a short write lock": planning runs concurrently inside the HNSW read lock, while commit holds the write lock for only 3–7ms per batch (measured), so searches can read the graph during construction. Scenario: Cohere 100K, insert_rate=500/s, k=100.</p>
+
+          <figure class="figure" id="fig-checkpoints">
+            <figcaption class="figure-head">
+              <span class="figure-no">FIG. 04</span>
+              <div>
+                <h3>Streaming checkpoint arrival time</h3>
+                <p class="figure-desc">Arrival time (seconds) at the 50% / 80% / 100% / 110% checkpoints. Actual writes take 200.1s for all three paths, so a shorter bar means the checkpoint arrives earlier.</p>
+              </div>
+            </figcaption>
+
+            <div class="bar-chart" role="img" aria-label="Streaming checkpoint arrival times: 50% is old path 100.8 seconds, new 1× 101.0 seconds, new 2× 101.0 seconds; 80% is 206.3, 164.4, 165.3 seconds; 100% is 211.2, 201.0, 201.0 seconds; 110% is 294.0, 282.5, 284.5 seconds.">
+              <div class="bar-group">
+                <span class="bar-label">Checkpoint 50%</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--old" style="--w:33.6%"></span></span><span class="bar-num">100.8s</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new1" style="--w:33.7%"></span></span><span class="bar-num">101.0s</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new2" style="--w:33.7%"></span></span><span class="bar-num">101.0s</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">Checkpoint 80%</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--old" style="--w:68.8%"></span></span><span class="bar-num">206.3s</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new1" style="--w:54.8%"></span></span><span class="bar-num">164.4s</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new2" style="--w:55.1%"></span></span><span class="bar-num">165.3s</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">Checkpoint 100%</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--old" style="--w:70.4%"></span></span><span class="bar-num">211.2s</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new1" style="--w:67.0%"></span></span><span class="bar-num">201.0s</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new2" style="--w:67.0%"></span></span><span class="bar-num">201.0s</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">Checkpoint 110%</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--old" style="--w:98.0%"></span></span><span class="bar-num">294.0s</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new1" style="--w:94.2%"></span></span><span class="bar-num">282.5s</span></div>
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new2" style="--w:94.8%"></span></span><span class="bar-num">284.5s</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="legend">
+              <span class="key key--old">Old 1× (10-22)</span>
+              <span class="key key--new1">New 1× (10-23)</span>
+              <span class="key key--new2">New 2× (10-23)</span>
+            </div>
+            <p class="figure-note"><strong>Same-scenario notes:</strong> optimize 0.07s → 0.01s; mature recall (100% / 110%): old .988 / .988, new 1× .9876 / .9876, new 2× .996 / .996. 100% QPS (c10): 1221 → 1355 (new 1×) / 887 (new 2×).</p>
+
+            <details class="data-toggle">
+              <summary>Show data table</summary>
+              <table class="data-table">
+                <caption>Streaming, Cohere 100K, insert_rate=500/s, k=100</caption>
+                <thead><tr><th scope="col">Metric</th><th scope="col">Old 1×</th><th scope="col">New 1×</th><th scope="col">New 2×</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">Checkpoint 50%</th><td>100.8s</td><td>101.0s</td><td>101.0s</td></tr>
+                  <tr><th scope="row">Checkpoint 80%</th><td>206.3s</td><td>164.4s</td><td>165.3s</td></tr>
+                  <tr><th scope="row">Checkpoint 100%</th><td>211.2s</td><td>201.0s</td><td>201.0s</td></tr>
+                  <tr><th scope="row">Checkpoint 110%</th><td>294.0s</td><td>282.5s</td><td>284.5s</td></tr>
+                  <tr><th scope="row">Mature recall 100% / 110%</th><td>.988 / .988</td><td>.9876 / .9876</td><td>.996 / .996</td></tr>
+                  <tr><th scope="row">100% QPS · c10</th><td>1221</td><td>1355</td><td>887</td></tr>
+                  <tr><th scope="row">110% QPS · c10</th><td>1175</td><td>1353</td><td>894</td></tr>
+                  <tr><th scope="row">optimize</th><td>0.07s</td><td>0.01s</td><td>0.01s</td></tr>
+                </tbody>
+              </table>
+            </details>
+          </figure>
+
+          <figure class="figure" id="fig-p99">
+            <figcaption class="figure-head">
+              <span class="figure-no">FIG. 05</span>
+              <div>
+                <h3>50% stage — total time for 1,000 serial queries</h3>
+                <p class="figure-desc">Old-path total 104s is drawn as 100%. The label at the end of each bar is "total time / p99".</p>
+              </div>
+            </figcaption>
+
+            <div class="bar-chart" role="img" aria-label="Streaming 50% stage, 1,000 serial queries: old path total 104 seconds and p99 1.72 seconds; new 1× total 3.9 seconds and p99 21 milliseconds; new 2× total 6.3 seconds and p99 25 milliseconds.">
+              <div class="bar-group">
+                <span class="bar-label">Old 1×</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--old" style="--w:100%"></span></span><span class="bar-num">104s / 1.72s</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">New 1×</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new1" style="--w:3.75%"></span></span><span class="bar-num">3.9s / 21ms</span></div>
+                </div>
+              </div>
+              <div class="bar-group">
+                <span class="bar-label">New 2×</span>
+                <div class="bar-lines">
+                  <div class="bar-line"><span class="bar-track"><span class="bar bar--new2" style="--w:6.06%"></span></span><span class="bar-num">6.3s / 25ms</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="legend">
+              <span class="key key--old">Old 1×</span>
+              <span class="key key--new1">New 1×</span>
+              <span class="key key--new2">New 2×</span>
+            </div>
+            <p class="figure-note"><strong>Ratios:</strong> the new paths take roughly 1/17 to 1/27 of the old total time, and p99 is roughly 1/69 to 1/82. Bars are linear, so the new bars are physically tiny; read the labels, not the width.</p>
+          </figure>
+
+          <div class="callout">
+            <strong>Early recall cannot be compared across search speeds.</strong> VectorDBBench's streaming ground truth is fully static, while writes arrive as a prefix of the dataset rows. The measured GT@10 ceiling for CohereSmall is 0.5030 for the first 50% of rows and 0.8031 for the first 80%. The old path's 50% recall of .954 came from queries blocked by the graph-build write lock (1,000 queries took 104s), so most queries actually ran after the index was nearly complete. The new path finishes in 3.9s and therefore measures the coverage ceiling (.515 / .826). Judge mature recall at 100% / 110%.
+          </div>
+
+          <p>The new path costs about 11% more wall-clock time for a full bulk build (Cohere 1M: 1170s vs 1055s); if load time is critical, set <code>HOUYI_HNSW_PLAN_APPLY=0</code> to fall back. The final gate build was rerun on 2026-10-24: checkpoints 100.95 / 164.69 / 200.90 / 283.25s, recall .5148 / .8307 / .988 / .988, serial p99 22 / 24.9 / 4.9 / 4.7ms, and 100/110% QPS 999/1160 and 980/1214, consistent with the table within run variance.</p>
+        </section>
+
+        <section class="measure-section" id="reproduce">
+          <h2>Reproduce, and what not to do.</h2>
+          <p>Full cases, parameters, and the result-record template are in <a href="https://github.com/houyidb-community/houyidb/blob/main/VDBBENCH_PROTOCOL.en.md">VDBBENCH_PROTOCOL.en.md ↗</a>. The shortest path to the HouyiDB-side self-test gate is below.</p>
+
+          <div class="terminal repro-code">
+            <div class="terminal-bar">
+              <span>Terminal / reproduce</span>
+              <span class="terminal-hint">bash</span>
+            </div>
+            <pre><code>export VDB_ROOT=/path/to/VectorDBBench   # working copy with the HouyiDB adapter
+./scripts/perf_regression_gate.sh vdb
+
+# High QPS: 1×M
+HOUYI_HNSW_LAYER0_MULT=1 ./scripts/perf_regression_gate.sh vdb
+
+# Control: fall back to the old graph-merge path
+HOUYI_HNSW_PLAN_APPLY=0 ./scripts/perf_regression_gate.sh vdb</code></pre>
+          </div>
+
+          <div class="callout">
+            <strong>Warning:</strong> the self-test gate runs preflight, which stops an existing local houyi-server, frees development ports, and clears the development WAL. <strong>Do not run it in production.</strong> Clean-room rules and the full comparison flow are defined by the protocol.
+          </div>
+
+          <ul class="status-list">
+            <li><strong>No total score</strong><span>Tables come from different dates or code paths; each table is its own A/B.</span></li>
+            <li><strong>No mixed scope</strong><span>Do not compare numbers across machines, modes (1×/2×), ef_search, concurrency, or interface paths.</span></li>
+            <li><strong>No snapshot flip</strong><span>Do not switch 1×/2× on an existing graph snapshot; confirm snapshot / WAL integrity or accept a full replay.</span></li>
+            <li><strong>Not a benchmark</strong><span>These are local engineering measurements from one machine and one run, not results from a lab or any external environment.</span></li>
+          </ul>
+
+          <p>Data source: <a href="https://github.com/houyidb-community/houyidb/blob/main/docs/benchmarks/houyidb-performance-2026-10.en.md">docs/benchmarks/houyidb-performance-2026-10.en.md ↗</a>. Parameters and tuning knobs are in the <a href="https://github.com/houyidb-community/houyidb/blob/main/docs/HOUYIDB_SERVER_MANUAL.en.md">server manual ↗</a>.</p>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a class="brand" href="index.html" aria-label="HouyiDB home">
+        <img class="brand-logo" src="../assets/logo-h-en-red.png" alt="HouyiDB" width="180" height="42">
+      </a>
+          <p>A single-node, memory-first vector database. Rust / Apache-2.0 / Community edition. This is a static site with no external fonts, images, or CDN requests.</p>
+        </div>
+        <div class="footer-col">
+          <h2>Site</h2>
+          <a href="index.html">Overview</a>
+          <a href="performance.html">Performance</a>
+          <a href="docs.html">Docs</a>
+          <a href="../performance.html" hreflang="zh-CN" lang="zh-CN">中文</a>
+        </div>
+        <div class="footer-col">
+          <h2>Docs</h2>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/docs/USER_MANUAL.en.md">User manual</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/docs/DEPLOYMENT_GUIDE.en.md">Deployment</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/docs/HOUYIDB_SERVER_MANUAL.en.md">Server manual</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/docs/EMBEDDING_GUIDE.en.md">Embedding</a>
+        </div>
+        <div class="footer-col">
+          <h2>Project</h2>
+          <a href="https://github.com/houyidb-community/houyidb">GitHub</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/CONTRIBUTING.en.md">Contributing</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/SECURITY.en.md">Security</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/LICENSE">Apache-2.0</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 HouyiDB contributors · Community edition</span>
+        <span>Single node · memory-first · Rust · pgwire / HTTP</span>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

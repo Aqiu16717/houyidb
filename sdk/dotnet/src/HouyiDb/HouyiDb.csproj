@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- net8.0 = 当前 LTS 下限；net10.0 覆盖最新运行时 -->
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+
+    <PackageId>HouyiDb</PackageId>
+    <Version>0.2.0-beta.5</Version>
+    <RepositoryUrl>https://github.com/houyidb-community/houyidb</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://houyidb.top</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <Description>Official .NET client for HouyiDB vector database (collections HTTP API)</Description>
+    <Authors>HouyiDB Contributors</Authors>
+    <LicenseExpression>Apache-2.0</LicenseExpression>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- 类型/方法级文档手写维护；属性/常量逐条补注释噪音大于价值，抑制 CS1591 -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Konscious.Security.Cryptography.Blake2" Version="1.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

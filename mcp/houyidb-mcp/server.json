@@ -1,0 +1,47 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.houyidb-community/houyidb-mcp",
+  "description": "MCP server exposing HouyiDB vector search, collection status, and opt-in writes.",
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "houyidb-mcp",
+      "version": "0.1.0",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "HOUYIDB_URL",
+          "description": "HouyiDB HTTP base URL.",
+          "default": "http://127.0.0.1:17000",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "HOUYI_AUTH_TOKEN",
+          "description": "Optional Bearer token sent to HouyiDB.",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "HOUYIDB_MCP_READ_ONLY",
+          "description": "1 disables upsert/delete; 0 enables writes.",
+          "default": "1",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "HOUYIDB_MCP_COLLECTIONS",
+          "description": "Comma-separated collection allowlist; empty allows all.",
+          "isRequired": false,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

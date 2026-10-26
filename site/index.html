@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HouyiDB — 单机、内存优先的向量数据库</title>
+  <meta name="description" content="HouyiDB 是用 Rust 编写的单机、内存优先向量数据库：一个二进制提供 HNSW 检索、pgwire/HTTP 与 OpenAI 兼容 embedding 网关。">
+  <meta name="theme-color" content="#0c0b0a">
+  <link rel="canonical" href="https://houyidb.top/">
+  <link rel="alternate" hreflang="zh-CN" href="https://houyidb.top/">
+  <link rel="alternate" hreflang="en" href="https://houyidb.top/en/">
+  <link rel="alternate" hreflang="x-default" href="https://houyidb.top/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="HouyiDB — 单机、内存优先的向量数据库">
+  <meta property="og:description" content="Rust 编写，单二进制；HNSW 检索、pgwire/HTTP 与 OpenAI 兼容 embedding 网关。">
+  <meta property="og:locale" content="zh_CN">
+  <link rel="icon" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <script>document.documentElement.classList.remove('no-js');document.documentElement.classList.add('js');</script>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="pages.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到主要内容 / Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="HouyiDB 首页 / Home">
+        <img class="brand-logo" src="assets/logo-h-zh-red.png" alt="HouyiDB" width="180" height="42">
+      </a>
+
+      <div class="header-right">
+        <nav class="site-nav" id="site-nav" aria-label="主导航 / Main navigation">
+          <a href="index.html" aria-current="page"><span class="nav-no">01</span>概览</a>
+          <a href="performance.html"><span class="nav-no">02</span>性能</a>
+          <a href="docs.html"><span class="nav-no">03</span>文档</a>
+        </nav>
+        <div class="header-tools">
+          <div class="lang-switch" aria-label="语言 / Language">
+            <span aria-current="true" lang="zh-CN">中</span>
+            <a href="en/index.html" hreflang="en" lang="en">EN</a>
+          </div>
+          <a class="gh-link" href="https://github.com/houyidb-community/houyidb">GitHub ↗</a>
+          <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">菜单</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="wrap hero" aria-labelledby="hero-title">
+      <div class="hero-main">
+        <p class="kicker">Community edition · v0.2.0-beta.5</p>
+        <h1 id="hero-title">把向量检索，<span class="accent">收进一个二进制。</span></h1>
+        <p class="lede">HouyiDB 是<strong>单机、内存优先</strong>的向量数据库：Rust 编写，一个二进制同时提供 pgwire、HTTP 与 OpenAI 兼容 embedding 网关。</p>
+        <div class="actions">
+          <a class="btn btn--primary" href="https://github.com/houyidb-community/houyidb">GitHub 仓库 ↗</a>
+          <a class="btn" href="#quickstart">60 秒 Quick Start ↓</a>
+          <a class="btn" href="performance.html">性能实测 →</a>
+        </div>
+        <p class="hero-meta">
+          <span>单机部署</span>
+          <span>内存优先</span>
+          <span>Rust</span>
+          <span>Apache-2.0</span>
+        </p>
+      </div>
+
+      <aside class="hero-aside" aria-label="规格速览 / Spec sheet">
+        <svg class="index-map" viewBox="0 0 320 236" aria-hidden="true" focusable="false">
+          <g class="edges">
+            <path d="M160 34 L96 94 M160 34 L226 94 M96 94 L52 166 M96 94 L160 166 M226 94 L160 166 M226 94 L270 166 M96 94 L226 94 M52 166 L26 212 M52 166 L92 214 M160 166 L128 212 M160 166 L196 212 M270 166 L236 214 M270 166 L296 210"></path>
+          </g>
+          <g class="layers">
+            <line class="layer" x1="10" y1="34" x2="310" y2="34"></line>
+            <line class="layer" x1="10" y1="94" x2="310" y2="94"></line>
+            <line class="layer" x1="10" y1="166" x2="310" y2="166"></line>
+            <line class="layer" x1="10" y1="196" x2="310" y2="196"></line>
+          </g>
+          <g class="nodes">
+            <circle class="node node--hot" cx="160" cy="34" r="5.2"></circle>
+            <circle class="node" cx="96" cy="94" r="3.6"></circle>
+            <circle class="node" cx="226" cy="94" r="3.6"></circle>
+            <circle class="node node--l0" cx="52" cy="166" r="3"></circle>
+            <circle class="node node--l0" cx="160" cy="166" r="3"></circle>
+            <circle class="node node--l0" cx="270" cy="166" r="3"></circle>
+            <circle class="buffer" cx="26" cy="212" r="2"></circle>
+            <circle class="buffer" cx="75" cy="216" r="2"></circle>
+            <circle class="buffer" cx="124" cy="210" r="2"></circle>
+            <circle class="buffer" cx="173" cy="217" r="2"></circle>
+            <circle class="buffer" cx="222" cy="211" r="2"></circle>
+            <circle class="buffer" cx="271" cy="216" r="2"></circle>
+            <circle class="buffer" cx="306" cy="210" r="2"></circle>
+          </g>
+          <path class="edge edge--hot" d="M160 218 C 158 190, 158 120, 160 40" stroke-dasharray="3 4"></path>
+          <g class="labels">
+            <text class="label" x="10" y="25">ENTRY</text>
+            <text class="label" x="10" y="85">L1</text>
+            <text class="label" x="10" y="157">L0</text>
+            <text class="label" x="10" y="187">WRITE BUFFER</text>
+            <text class="label label--accent" x="310" y="25" text-anchor="end">HNSW · 3 LEVELS</text>
+            <text class="label label--accent" x="310" y="187" text-anchor="end">HOT → ASYNC</text>
+          </g>
+        </svg>
+
+        <div class="spec-sheet">
+          <h2><span>Spec sheet</span><span>01 / 02</span></h2>
+          <dl>
+            <dt>形态</dt><dd>单机 · 手动主备</dd>
+            <dt>索引</dt><dd>HNSW + PAX</dd>
+            <dt>协议</dt><dd>pgwire · HTTP</dd>
+            <dt>向量化</dt><dd>OpenAI 兼容网关</dd>
+            <dt>实现</dt><dd>Rust · 单二进制</dd>
+            <dt>版本</dt><dd>v0.2.0-beta.5</dd>
+            <dt>许可</dt><dd>Apache-2.0</dd>
+          </dl>
+        </div>
+      </aside>
+    </section>
+
+    <section class="stat-band" aria-label="本机实测摘要 / Measurement summary">
+      <div class="wrap">
+        <div class="stat-grid">
+          <a class="stat" href="performance.html#layer0">
+            <span class="stat-value">686.0<small>QPS</small></span>
+            <span class="stat-label">OpenAI 50K · ef64 · conc 8 · 1×M</span>
+          </a>
+          <a class="stat" href="performance.html#streaming">
+            <span class="stat-value">21<small>ms p99</small></span>
+            <span class="stat-label">Streaming 50% · plan/apply 新路径</span>
+          </a>
+          <a class="stat" href="#sdk">
+            <span class="stat-value">6<small>SDK</small></span>
+            <span class="stat-label">Python / TS / Go / Rust / .NET / Java</span>
+          </a>
+          <a class="stat" href="#why">
+            <span class="stat-value">1<small>binary</small></span>
+            <span class="stat-label">单机部署 · 不含分片层</span>
+          </a>
+        </div>
+        <p class="stat-foot">前两项为单机、单次运行的本机工程测量；机器、版本与参数见<a href="performance.html">性能页</a>。不是实验室基准，也不能跨场景拼成一个总分。</p>
+      </div>
+    </section>
+
+    <section class="wrap section" id="why">
+      <div class="section-head">
+        <p class="kicker">Why / 01</p>
+        <div>
+          <h2>三件事，不向复杂度妥协。</h2>
+          <p class="section-intro">向量数据库的日常，是写入、检索与运维三股力量互相拉扯。HouyiDB 的选择是把它们压进单机边界，用尽可能少的部件解决。</p>
+        </div>
+      </div>
+
+      <div class="tenets">
+        <article class="tenet">
+          <div class="tenet-no">01</div>
+          <div class="tenet-body">
+            <h3>写入不堵检索。</h3>
+            <p>HotBuffer 接住实时写入，Async-Builder 在后台并行合图。plan/apply 把规划放进读锁、提交压进短写锁——构图期间，检索仍然可以并发读图。</p>
+          </div>
+          <ul class="tenet-specs">
+            <li><strong>流式自测</strong>50% 阶段串行查询 104s → 3.9s；p99 1.72s → 21ms</li>
+            <li><strong>写入路径</strong>HotBuffer + Async-Builder</li>
+            <li><strong>回退开关</strong>HOUYI_HNSW_PLAN_APPLY=0</li>
+          </ul>
+        </article>
+
+        <article class="tenet">
+          <div class="tenet-no">02</div>
+          <div class="tenet-body">
+            <h3>一种数据，三种入口。</h3>
+            <p>HTTP JSON 适合服务集成，pgwire 让 psql 与 PostgreSQL 客户端直接说话，OpenAI 兼容网关把 embedding 上游接进同一个 collection。</p>
+          </div>
+          <ul class="tenet-specs">
+            <li><strong>HTTP</strong>/v1/collections · OpenAPI</li>
+            <li><strong>pgwire</strong>text / binary · SQL 混合检索</li>
+            <li><strong>向量化</strong>/v1/embeddings · 上游自选</li>
+          </ul>
+        </article>
+
+        <article class="tenet">
+          <div class="tenet-no">03</div>
+          <div class="tenet-body">
+            <h3>把复杂度留在单机。</h3>
+            <p>Rust 实现，单二进制落地；PAX 行列混存配合 bitset 剪枝，WAL 与图快照负责冷启动恢复。主备切换手动 promote，不引入自动选主与分片层。</p>
+          </div>
+          <ul class="tenet-specs">
+            <li><strong>存储</strong>PAX · 64B 对齐 · WAL + 快照</li>
+            <li><strong>部署</strong>单二进制 / Docker / Helm</li>
+            <li><strong>边界</strong>单机 · 手动主备 · 无分片</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="section section--surface" id="quickstart">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="kicker">Quickstart / 02</p>
+          <div>
+            <h2>60 秒，从零到第一次检索。</h2>
+            <p class="section-intro">需要 Docker；或 Rust 1.87+ / macOS 预编译包。首次镜像构建约 5–15 分钟，构建完成后，下面三步可在 60 秒内跑完。</p>
+          </div>
+        </div>
+
+        <div class="quickstart-grid">
+          <div class="terminal">
+            <div class="terminal-bar">
+              <span>Terminal / quickstart</span>
+              <span class="terminal-hint">bash</span>
+            </div>
+            <pre><code># 1 · 启动：HTTP :7000 / pgwire :5432
+git clone https://github.com/houyidb-community/houyidb.git
+cd houyidb
+docker compose up -d
+curl -sS --noproxy '*' http://127.0.0.1:7000/v1/health
+# {"status":"ok"}
+
+# 2 · 写入（collection 首次写入自动创建，维度自适应）
+curl -sS --noproxy '*' -X POST \
+  http://127.0.0.1:7000/v1/collections/goods/upsert \
+  -H 'Content-Type: application/json' -d '{
+  "vectors": [
+    {"id":1,"values":[0.92,0.88,0.06,0.05,0.05,0.04,0.05,0.05],"label":"fruit","payload":{"name":"apple"}},
+    {"id":2,"values":[0.05,0.04,0.92,0.90,0.06,0.05,0.05,0.04],"label":"electronics","payload":{"name":"laptop"}},
+    {"id":3,"values":[0.04,0.05,0.05,0.06,0.90,0.92,0.05,0.04],"label":"book","payload":{"name":"rust-book"}}
+  ]}'
+# {"inserted":3}
+
+# 3 · 检索
+curl -sS --noproxy '*' -X POST \
+  http://127.0.0.1:7000/v1/collections/goods/search \
+  -H 'Content-Type: application/json' \
+  -d '{"vector":[0.90,0.85,0.05,0.05,0.05,0.05,0.05,0.05],"k":3}'
+# {"ids":[...],"scores":[...]}</code></pre>
+          </div>
+
+          <aside class="quick-notes" aria-label="快速开始补充 / Quick start notes">
+            <h3>After the first search</h3>
+            <ul>
+              <li><span>API 索引</span>交互式 OpenAPI：<code>/v1/openapi.json</code></li>
+              <li><span>pgwire</span><code>psql -h 127.0.0.1 -p 5432 -U tester -d houyi</code></li>
+              <li><span>端口冲突</span>macOS AirPlay 可能占用 7000；改为映射 17000:7000 即可。</li>
+              <li><span>完整手册</span><a href="https://github.com/houyidb-community/houyidb/blob/main/docs/USER_MANUAL.md">用户手册 ↗</a> · <a href="https://github.com/houyidb-community/houyidb/blob/main/docs/HOUYIDB_SERVER_MANUAL.md">服务端手册 ↗</a></li>
+            </ul>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap section" id="capabilities">
+      <div class="section-head">
+        <p class="kicker">Capabilities / 03</p>
+        <div>
+          <h2>能力清单，写清楚状态。</h2>
+          <p class="section-intro">对应 v0.2.0-beta.5 源码树。beta 就是 beta：不把路线图当现货，也不把单机能力说成集群能力。</p>
+        </div>
+      </div>
+
+      <div class="table-scroll" tabindex="0" role="region" aria-label="HouyiDB 能力矩阵">
+        <table class="matrix">
+          <caption class="sr-only">HouyiDB v0.2.0-beta.5 能力与状态</caption>
+          <thead>
+            <tr><th scope="col">能力域</th><th scope="col">能力</th><th scope="col">状态</th></tr>
+          </thead>
+          <tbody>
+            <tr class="row-group"><th colspan="3" scope="colgroup">检索与写入</th></tr>
+            <tr><th scope="row">检索</th><td>HNSW 图索引 + SIMD 距离计算（NEON；AVX feature 隔离）</td><td><span class="chip chip--beta">Beta</span></td></tr>
+            <tr><th scope="row">检索</th><td>标量过滤与混合检索（label 倒排 + bitset 剪枝）</td><td><span class="chip chip--beta">Beta</span></td></tr>
+            <tr><th scope="row">检索</th><td>多索引后端：Clustered / PQ / HII-L0</td><td><span class="chip chip--beta">Beta</span></td></tr>
+            <tr><th scope="row">写入</th><td>HotBuffer + Async-Builder 双速写入</td><td><span class="chip chip--beta">Beta</span></td></tr>
+
+            <tr class="row-group"><th colspan="3" scope="colgroup">持久化 / 接口 / 生态</th></tr>
+            <tr><th scope="row">持久化</th><td>WAL + 图快照 + 冷启动恢复</td><td><span class="chip chip--beta">Beta</span></td></tr>
+            <tr><th scope="row">接口</th><td>HTTP JSON API 与 OpenAPI</td><td><span class="chip chip--beta">Beta</span></td></tr>
+            <tr><th scope="row">接口</th><td>pgwire（text / binary）与 SQL 混合检索</td><td><span class="chip chip--beta">Beta</span></td></tr>
+            <tr><th scope="row">向量化</th><td>OpenAI 兼容 <code>/v1/embeddings</code> 网关（上游自选）</td><td><span class="chip chip--beta">Beta</span></td></tr>
+            <tr><th scope="row">生态</th><td>六语言 SDK + LangChain / LlamaIndex 适配器</td><td><span class="chip chip--beta">Beta</span></td></tr>
+
+            <tr class="row-group"><th colspan="3" scope="colgroup">运维与部署</th></tr>
+            <tr><th scope="row">运维</th><td>Prometheus 指标；RBAC、审计、静态加密、租户配额</td><td><span class="chip chip--beta">Beta</span></td></tr>
+            <tr><th scope="row">部署</th><td>单二进制 / Docker Compose / Helm</td><td><span class="chip chip--beta">Beta</span></td></tr>
+            <tr><th scope="row">部署</th><td>leader / follower 主备，手动 promote</td><td><span class="chip chip--beta">Beta</span></td></tr>
+
+            <tr class="row-group"><th colspan="3" scope="colgroup">路线图</th></tr>
+            <tr><th scope="row">路线图</th><td>HII L1（GPU CAGRA）与 L2（NVMe DiskANN）</td><td><span class="chip chip--preview">Preview</span></td></tr>
+            <tr><th scope="row">路线图</th><td>MCP Server</td><td><span class="chip chip--soon">Planned</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="matrix-foot">状态描述 v0.2.0-beta.5 源码树。beta 期间 API 与存储格式仍可能调整；社区版不做分片，也不提供自动选主。细节见<a href="https://github.com/houyidb-community/houyidb/blob/main/docs/HOUYIDB_SERVER_MANUAL.md">服务端手册</a>与<a href="https://github.com/houyidb-community/houyidb/blob/main/docs/DEPLOYMENT_GUIDE.md">部署指南</a>。</p>
+    </section>
+
+    <section class="section section--surface" id="sdk">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="kicker">SDK / 04</p>
+          <div>
+            <h2>六种语言，同一个 stable_id。</h2>
+            <p class="section-intro">客户端覆盖常用后端与数据栈；字符串 id 经 BLAKE2b-8 映射为 u64，同一字符串在任意 SDK 得到同一结果，删除与重放可以跨语言进行。</p>
+          </div>
+        </div>
+
+        <div class="sdk-grid">
+          <a class="sdk-item" href="https://github.com/houyidb-community/houyidb/tree/main/sdk/python">
+            <span class="lang">Python</span>
+            <span class="note">客户端 + LangChain / LlamaIndex 适配器</span>
+            <span class="arrow">浏览 SDK ↗</span>
+          </a>
+          <a class="sdk-item" href="https://github.com/houyidb-community/houyidb/tree/main/sdk/typescript">
+            <span class="lang">TypeScript</span>
+            <span class="note">大整数 id 安全处理</span>
+            <span class="arrow">浏览 SDK ↗</span>
+          </a>
+          <a class="sdk-item" href="https://github.com/houyidb-community/houyidb/tree/main/sdk/go">
+            <span class="lang">Go</span>
+            <span class="note">云原生后端客户端</span>
+            <span class="arrow">浏览 SDK ↗</span>
+          </a>
+          <a class="sdk-item" href="https://github.com/houyidb-community/houyidb/tree/main/sdk/rust">
+            <span class="lang">Rust</span>
+            <span class="note">原生客户端</span>
+            <span class="arrow">浏览 SDK ↗</span>
+          </a>
+          <a class="sdk-item" href="https://github.com/houyidb-community/houyidb/tree/main/sdk/dotnet">
+            <span class="lang">.NET</span>
+            <span class="note">net8.0 / net10.0</span>
+            <span class="arrow">浏览 SDK ↗</span>
+          </a>
+          <a class="sdk-item" href="https://github.com/houyidb-community/houyidb/tree/main/sdk/java">
+            <span class="lang">Java</span>
+            <span class="note">JDK 17+</span>
+            <span class="arrow">浏览 SDK ↗</span>
+          </a>
+        </div>
+        <p class="sdk-foot">stable_id：BLAKE2b-8 大端 &amp; 2^63−1，与服务端网关一致；同一字符串 id 在任意语言得到同一 u64。</p>
+      </div>
+    </section>
+
+    <section class="wrap section status-section" id="status">
+      <div class="status-inner">
+        <p class="kicker">Status / 05</p>
+        <h2>Beta，但边界说清楚。</h2>
+        <p>v0.2.0-beta.5 是 developer preview：适合功能验证、性能试用与集成预研。API、存储格式和性能旋钮仍可能变化；关键生产负载请先完成验证、容量评估与恢复演练。</p>
+        <ul class="status-list">
+          <li><strong>单机边界</strong><span>主备为手动 leader / follower promote，不做自动选主，不引入分片。</span></li>
+          <li><strong>接口稳定性</strong><span>beta 期间接口以文档为准；破坏性变更写入 CHANGELOG。</span></li>
+          <li><strong>生产建议</strong><span>显式设置 <code>--wal-path</code>，纳入备份，并定期做冷启动恢复演练。</span></li>
+        </ul>
+        <div class="status-links">
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/CHANGELOG.md">CHANGELOG ↗</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/docs/DEPLOYMENT_GUIDE.md">部署指南 ↗</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/ROADMAP.md">路线图 ↗</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap cta" id="github">
+      <p class="kicker">GitHub / 06</p>
+      <h2>代码、协议与文档，都在 GitHub。</h2>
+      <div class="actions">
+        <a class="btn btn--primary" href="https://github.com/houyidb-community/houyidb">前往 GitHub ↗</a>
+        <a class="btn" href="https://github.com/houyidb-community/houyidb/blob/main/CONTRIBUTING.md">贡献指南</a>
+      </div>
+      <p class="cta-meta">社区版 Apache-2.0 · 外部贡献需签署 CLA · 安全漏洞请走私密渠道<br><a href="https://github.com/houyidb-community/houyidb/blob/main/LICENSE">LICENSE</a> · <a href="https://github.com/houyidb-community/houyidb/blob/main/SECURITY.md">SECURITY</a> · <a href="https://github.com/houyidb-community/houyidb/blob/main/TRADEMARK.md">TRADEMARK</a></p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a class="brand" href="index.html" aria-label="HouyiDB 首页 / Home">
+        <img class="brand-logo" src="assets/logo-h-zh-red.png" alt="HouyiDB" width="180" height="42">
+      </a>
+          <p>单机、内存优先的向量数据库。Rust / Apache-2.0 / Community edition。本站是纯静态页面，不请求外部字体、图片或 CDN。</p>
+        </div>
+        <div class="footer-col">
+          <h2>站点</h2>
+          <a href="index.html">概览</a>
+          <a href="performance.html">性能实测</a>
+          <a href="docs.html">文档入口</a>
+          <a href="en/index.html" hreflang="en" lang="en">English</a>
+        </div>
+        <div class="footer-col">
+          <h2>文档</h2>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/docs/USER_MANUAL.md">快速上手</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/docs/DEPLOYMENT_GUIDE.md">部署指南</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/docs/HOUYIDB_SERVER_MANUAL.md">服务端手册</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/docs/EMBEDDING_GUIDE.md">向量化</a>
+        </div>
+        <div class="footer-col">
+          <h2>项目</h2>
+          <a href="https://github.com/houyidb-community/houyidb">GitHub</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/CONTRIBUTING.md">贡献指南</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/SECURITY.md">安全策略</a>
+          <a href="https://github.com/houyidb-community/houyidb/blob/main/LICENSE">Apache-2.0</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 HouyiDB contributors · Community edition</span>
+        <span>单机 · 内存优先 · Rust · pgwire / HTTP</span>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llama-index-vector-stores-houyidb"
+version = "0.2.0b5"
+description = "LlamaIndex VectorStore adapter for HouyiDB"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "Apache-2.0"
+authors = [{ name = "HouyiDB Contributors" }]
+dependencies = ["llama-index-core>=0.12", "houyidb>=0.2.0b5"]
+
+[project.urls]
+Homepage = "https://houyidb.top"
+Repository = "https://github.com/houyidb-community/houyidb"
+Documentation = "https://github.com/houyidb-community/houyidb/blob/main/docs/USER_MANUAL.md"
+
+[tool.setuptools.packages.find]
+include = ["llama_index*"]
+namespaces = true

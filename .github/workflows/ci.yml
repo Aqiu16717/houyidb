@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+# 最小权限：CI 只读代码跑检查，不需要 GITHUB_TOKEN 写权限
+permissions:
+  contents: read
+
+# 同一分支的新 push 取消在跑的旧 run，避免排队堆积
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Linux runner 固定 Ubuntu 24.04：ubuntu-latest 会随 GitHub 镜像迁移漂移
+# （2026-10 起迁 Ubuntu 26），固定后升级由我们显式决定。
+jobs:
+  test:
+    name: Test (macOS aarch64)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      # 第三方 action 钉完整 commit SHA（防上游分支被改/劫持），注释保留可读版本号
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      # P4.8：移除 hwloc 后无原生系统依赖，无需额外安装。
+      - run: cargo test --all --no-fail-fast
+      - run: cargo build --release -p houyi-server
+
+  # Linux 覆盖：防止 cfg(target_os = "linux") 路径在 macOS-only CI 下烂掉
+  # （先例：numa_vec 的 mbind 调用从未被编译，Docker 构建时才暴露）。
+  test-linux:
+    name: Test (Linux x86_64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - run: cargo test --all --no-fail-fast
+      - run: cargo build --release -p houyi-server
+
+  clippy:
+    name: Clippy
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - run: cargo clippy --all-targets -- -D warnings
+
+  fmt:
+    name: Format
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  # 注释双语棘轮门禁：存量基线允许，新增/增加的单语注释失败。
+  # 清完一批注释后下调 scripts/comment_baseline.json，直到清零。
+  # Bilingual-comment ratchet: baseline debt is allowed; new monolingual
+  # comments fail. Lower the baseline after each cleanup batch.
+  comment-language:
+    name: Comment language
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit bilingual comments (ratchet)
+        run: python3 scripts/comment_language_audit.py --gate --baseline scripts/comment_baseline.json
+
+  # Dockerfile 构建门禁（P4.3.4）：只构建不推送——没有这道门禁，Dockerfile
+  # 破损要等到打 tag 发版才暴露（release 是唯一消费 Dockerfile 的流水线）。
+  docker-build:
+    name: Docker build (no push)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          push: false
+          # load 进本地 daemon，下面的冒烟步才能 docker run（OCR d69068e[3]）。
+          # 只构建/加载 linux/amd64（runner 原生架构）：arm64 走 QEMU 会
+          # 让构建时间翻倍，CI 冒烟为 amd64 单架构已足够；release.yml 的
+          # 双架构推送路径不受影响。
+          load: true
+          platforms: linux/amd64
+          tags: houyidb:ci-check
+          cache-from: type=gha,scope=houyidb-ci
+          cache-to: type=gha,mode=max,scope=houyidb-ci
+      - name: Smoke-test the built image
+        # Dockerfile 无 ENTRYPOINT、CMD 是 houyi-server：`docker run img --help`
+        # 会把 --help 整体替换 CMD，必须用 --entrypoint 显式指定二进制。
+        run: docker run --rm --entrypoint houyi-server houyidb:ci-check --help >/dev/null

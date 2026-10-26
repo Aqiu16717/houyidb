@@ -1,0 +1,16 @@
+[package]
+name = "houyi-model"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# P4.5.6：复制/promote 协议的模型检查（Stateright）。独立 crate——模型与
+# 测试代码不进任何生产二进制，也不依赖 houyi-* 的运行时实现（模型是协议的
+# **规格镜像**，不是实现的单元测试）。
+[dependencies]
+stateright = { workspace = true }
+# lincheck（P4.5.7 fallback）：客户端历史是 JSONL。
+serde = { workspace = true }
+serde_json = { workspace = true }

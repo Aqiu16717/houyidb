@@ -1,0 +1,77 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+group = 'top.houyidb'
+version = '0.2.0-beta.5'
+description = 'Official Java client for HouyiDB vector database (collections HTTP API)'
+
+java {
+    // Java 17 为下限（java.net.http.HttpClient 自 11 起可用，17 是当前普及的 LTS）；
+    // 用 --release 而非 toolchain：本机 JDK 21 编译，无需下载额外工具链。
+    withSourcesJar()
+    withJavadocJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // BLAKE2b（JDK 无内置；Blake2bDigest 的 digest size 是算法参数，与五方对拍同口径）
+    api 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+    // JSON 序列化/反序列化
+    api 'com.fasterxml.jackson.core:jackson-databind:2.17.2'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.3'
+    // Gradle 9 起 platform launcher 不再隐式提供，须显式入 test runtime classpath
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+    // 集成测试打真实服务，输出跳过原因
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            pom {
+                name = 'houyidb-client'
+                description = 'Official Java client for HouyiDB vector database (collections HTTP API)'
+                url = 'https://houyidb.top'
+                licenses {
+                    license {
+                        name = 'Apache License, Version 2.0'
+                        url = 'https://www.apache.org/licenses/LICENSE-2.0'
+                    }
+                }
+                developers {
+                    developer {
+                        name = 'HouyiDB Contributors'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:https://github.com/houyidb-community/houyidb.git'
+                    developerConnection = 'scm:git:ssh://git@github.com/houyidb-community/houyidb.git'
+                    url = 'https://github.com/houyidb-community/houyidb'
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'localBuild'
+            url = layout.buildDirectory.dir('repo')
+        }
+    }
+}

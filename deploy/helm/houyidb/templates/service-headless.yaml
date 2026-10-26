@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "houyidb.fullname" . }}-headless
+  labels:
+    {{- include "houyidb.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  selector:
+    {{- include "houyidb.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.service.httpPort }}
+      targetPort: http
+    - name: pgwire
+      port: {{ .Values.service.pgwirePort }}
+      targetPort: pgwire
+    - name: replication
+      port: {{ .Values.service.replicationPort }}
+      targetPort: replication

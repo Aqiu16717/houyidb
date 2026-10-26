@@ -1,0 +1,28 @@
+[package]
+name = "houyi-mobile"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "HouyiDB Mobile: 轻量级向量索引，面向 iOS / Android"
+
+[lib]
+crate-type = ["staticlib", "cdylib"]
+
+[features]
+default = ["portable"]
+portable = ["houyi-vector/portable"]
+simd-neon = ["houyi-vector/simd-neon"]
+
+[dependencies]
+houyi-vector = { path = "../houyi-vector", version = "0.2.0-beta.5", default-features = false, features = ["portable", "simd-neon"] }
+houyi-core = { path = "../houyi-core", version = "0.2.0-beta.5", default-features = false, features = ["portable"] }
+ahash = "0.8"
+
+[dev-dependencies]
+rand.workspace = true
+
+# 注意：非 workspace 根包的 [profile] 会被 Cargo 忽略。
+# 体积优化的移动端构建请使用根 Cargo.toml 的 `mobile` profile：
+#   cargo build --profile mobile -p houyi-mobile

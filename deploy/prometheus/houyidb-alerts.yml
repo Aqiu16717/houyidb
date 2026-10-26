@@ -1,0 +1,123 @@
+# HouyiDB 告警规则（P4.8 / M5）
+# 用法：在 Prometheus rule_files 中引用本文件；kube-prometheus-stack 可放进
+# additionalPrometheusRulesMap。runbook_url 指向 docs/runbooks/。
+# EN: Prometheus rules for HouyiDB; every alert links to its runbook.
+groups:
+  - name: houyidb-replication
+    rules:
+      - alert: HouyiReplicationDiverged
+        expr: increase(houyidb_replication_diverged_rejections_total[5m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "复制日志内容分歧（同一 LSN 不同内容）"
+          description: "follower 握手被拒；继续重试不会自愈，需人工确定权威副本。"
+          runbook_url: "https://github.com/houyidb-community/houyidb/blob/main/docs/runbooks/replication-divergence.md"
+
+      - alert: HouyiReplicationFollowerAhead
+        expr: increase(houyidb_replication_follower_ahead_rejections_total[5m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "follower 日志领先 leader（疑似双主写入）"
+          description: "检查 promote 流程与旧主是否仍在接受写。"
+          runbook_url: "https://github.com/houyidb-community/houyidb/blob/main/docs/runbooks/replication-divergence.md"
+
+      - alert: HouyiReplicationLagHigh
+        expr: houyidb_replication_lag_entries > 10000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "follower 复制滞后超过 10000 条"
+          description: "检查网络、follower 磁盘 IO 与 apply 错误。"
+          runbook_url: "https://github.com/houyidb-community/houyidb/blob/main/docs/runbooks/replication-lag.md"
+
+      - alert: HouyiSlowFollowerKicked
+        expr: increase(houyidb_replication_slow_follower_kicks_total[10m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "慢 follower 被踢出扇出队列"
+          description: "保护机制生效；确认 follower 能自动 catch-up。"
+          runbook_url: "https://github.com/houyidb-community/houyidb/blob/main/docs/runbooks/replication-lag.md"
+
+      - alert: HouyiReplicationApplyFailures
+        expr: increase(houyidb_replication_apply_failures_total[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "follower apply 失败（可能伴随即时重试）"
+          description: "检查 apply 错误与 WAL 状态；持续失败会扩大 RPO。"
+          runbook_url: "https://github.com/houyidb-community/houyidb/blob/main/docs/runbooks/replication-lag.md"
+
+  - name: houyidb-security
+    rules:
+      - alert: HouyiAuditWriteErrors
+        expr: increase(houyidb_audit_write_errors_total[5m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "审计日志追加失败（fail-closed）"
+          description: "检查磁盘/权限；禁止删除或手工续写审计段。"
+          runbook_url: "https://github.com/houyidb-community/houyidb/blob/main/docs/runbooks/audit-chain-broken.md"
+
+      - alert: HouyiPgwireAuthFailures
+        expr: rate(houyidb_pgwire_auth_failures_total[5m]) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "pgwire 认证失败速率异常"
+          description: "区分凭据轮换/客户端 bug 与暴力破解。"
+          runbook_url: "https://github.com/houyidb-community/houyidb/blob/main/docs/runbooks/quota-and-auth-storm.md"
+
+      - alert: HouyiPgwireAuthzDenials
+        expr: rate(houyidb_pgwire_authz_denials_total[5m]) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "pgwire 越权拒绝速率异常（42501）"
+          description: "检查主体 collection 作用域配置，或视为探测行为。"
+          runbook_url: "https://github.com/houyidb-community/houyidb/blob/main/docs/runbooks/quota-and-auth-storm.md"
+
+      - alert: HouyiQuotaDenials
+        expr: rate(houyidb_pgwire_quota_denials_total[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "pgwire 配额拒绝速率过高（54000）"
+          description: "容量/重试风暴信号；不要用提高全局配额掩盖客户端无退避。"
+          runbook_url: "https://github.com/houyidb-community/houyidb/blob/main/docs/runbooks/quota-and-auth-storm.md"
+
+  - name: houyidb-resources
+    rules:
+      - alert: HouyiMemoryWatermarkRejections
+        expr: increase(houyidb_memory_watermark_rejected_total[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "内存水位线开始拒绝写入"
+          description: "检查 RSS 与负载；必要时扩容或降载。"
+          runbook_url: "https://github.com/houyidb-community/houyidb/blob/main/docs/runbooks/resource-watermarks.md"
+
+      - alert: HouyiGraphSnapshotRejected
+        expr: increase(houyidb_graph_snapshot_rejects_total[1h]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "图快照被拒绝（启动时回退更早快照/全量重放）"
+          description: "检查 CRC/截断/密钥原因；保留损坏样本。"
+          runbook_url: "https://github.com/houyidb-community/houyidb/blob/main/docs/runbooks/resource-watermarks.md"
+
+      - alert: HouyiDataDiskLow
+        expr: node_filesystem_avail_bytes{mountpoint="/data"} / node_filesystem_size_bytes{mountpoint="/data"} < 0.10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "数据盘可用空间低于 10%"
+          description: "扩容或清理安全可删内容；禁止删除活动 WAL/最近快照。"
+          runbook_url: "https://github.com/houyidb-community/houyidb/blob/main/docs/runbooks/resource-watermarks.md"

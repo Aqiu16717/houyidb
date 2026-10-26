@@ -1,0 +1,29 @@
+{{- if not .Values.config.existingSecret }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "houyidb.fullname" . }}-config
+  labels:
+    {{- include "houyidb.labels" . | nindent 4 }}
+data:
+  config.toml: |
+    vector_dim = {{ .Values.server.vectorDim }}
+    index_type = {{ .Values.server.indexType | quote }}
+    wal_write_mode = {{ .Values.server.walWriteMode | quote }}
+    snapshot_interval_secs = {{ .Values.server.snapshotIntervalSecs }}
+    snapshot_wal_threshold_bytes = {{ int64 .Values.server.snapshotWalThresholdBytes }}
+    default_ha_level = {{ .Values.server.defaultHaLevel | quote }}
+    metrics_interval_secs = {{ .Values.server.metricsIntervalSecs }}
+    role = {{ .Values.role | quote }}
+    replication_listen_addr = {{ printf "0.0.0.0:%v" .Values.service.replicationPort | quote }}
+    {{- if .Values.replication.leaderAddr }}
+    replication_leader_addr = {{ .Values.replication.leaderAddr | quote }}
+    {{- end }}
+    replication_queue_batches = {{ .Values.replication.queueBatches }}
+    replication_sync_timeout_ms = {{ .Values.replication.syncTimeoutMs }}
+    {{- if .Values.server.audit.enabled }}
+    audit_log_path = "/data/audit.log"
+    audit_include_reads = {{ .Values.server.audit.includeReads }}
+    audit_max_bytes = {{ int64 .Values.server.audit.maxBytes }}
+    {{- end }}
+{{- end }}

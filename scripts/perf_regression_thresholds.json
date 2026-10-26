@@ -1,0 +1,12 @@
+{
+  "vdb": {
+    "min_recall": 0.998,
+    "min_ndcg": 0.998,
+    "max_optimize_sec": 200.0,
+    "min_qps": 0.0
+  },
+  "incremental": {
+    "max_upsert_p99_ms": 2500.0,
+    "max_pending_count": 500000
+  }
+}

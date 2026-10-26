@@ -1,0 +1,21 @@
+# HouyiDB 一键启动：docker compose up -d
+# HTTP API: http://127.0.0.1:7000 （collections / OpenAI 网关 / 健康检查）
+# pgwire:   127.0.0.1:5432 （psql 或任意 PostgreSQL 客户端直连）
+services:
+  houyidb:
+    build: .
+    image: houyidb:latest
+    container_name: houyidb
+    ports:
+      - "7000:7000"   # HTTP
+      - "5432:5432"   # pgwire
+    volumes:
+      - houyidb-data:/data   # WAL 持久化
+    restart: unless-stopped
+    # OpenAI 兼容网关（可选）：指向上游 embedding 服务后，/v1/embeddings 自动入库
+    # environment:
+    #   HOUYI_OPENAI_UPSTREAM: https://api.openai.com
+    #   HOUYI_OPENAI_API_KEY: sk-...
+
+volumes:
+  houyidb-data:
