@@ -11,9 +11,13 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: "Actually publish to PyPI/npm/NuGet/crates.io"
+        description: "Actually publish the selected ecosystems"
         type: boolean
         default: false
+      ecosystems:
+        description: "Comma-separated: python,npm,nuget,crates (default python)"
+        type: string
+        default: "python"
 
 permissions:
   contents: read
@@ -65,7 +69,9 @@ jobs:
         with:
           name: python-${{ strategy.job-index }}
           path: ${{ matrix.pkg }}/dist/*
-      - if: github.event_name == 'release' || inputs.publish
+      - if: >-
+          (github.event_name == 'release' || inputs.publish) &&
+          (github.event_name == 'release' || contains(inputs.ecosystems, 'python'))
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: ${{ matrix.pkg }}/dist
@@ -93,7 +99,9 @@ jobs:
         with:
           name: npm-package
           path: sdk/typescript/houyidb/dist/*.tgz
-      - if: github.event_name == 'release' || inputs.publish
+      - if: >-
+          (github.event_name == 'release' || inputs.publish) &&
+          (github.event_name == 'release' || contains(inputs.ecosystems, 'npm'))
         run: npm publish --provenance --access public
         working-directory: sdk/typescript/houyidb
         env:
@@ -117,7 +125,9 @@ jobs:
         with:
           name: nuget-package
           path: sdk/dotnet/dist/*.nupkg
-      - if: github.event_name == 'release' || inputs.publish
+      - if: >-
+          (github.event_name == 'release' || inputs.publish) &&
+          (github.event_name == 'release' || contains(inputs.ecosystems, 'nuget'))
         run: dotnet nuget push dist/*.nupkg --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
         working-directory: sdk/dotnet
         env:
@@ -137,7 +147,9 @@ jobs:
         with:
           name: crate-package
           path: target/package/*.crate
-      - if: github.event_name == 'release' || inputs.publish
+      - if: >-
+          (github.event_name == 'release' || inputs.publish) &&
+          (github.event_name == 'release' || contains(inputs.ecosystems, 'crates'))
         run: cargo publish -p houyidb-client --token "$CARGO_REGISTRY_TOKEN"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
