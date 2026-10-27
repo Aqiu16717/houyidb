@@ -12,8 +12,8 @@
 - [ ] `cargo clippy --all-targets -- -D warnings`
 - [ ] `cargo fmt --all -- --check`
 - [ ] `./scripts/community_boundary_check.sh`
-- [ ] 涉及复制/WAL/HA：`./scripts/replication_drill.sh`、`concurrency_check.sh`、`turmoil_check.sh`
-- [ ] 涉及性能：`./scripts/perf_regression_gate.sh`
+- [ ] 涉及复制/WAL/HA：`cargo test -p houyi-persistence -p houyi-server`（开发仓另跑演练）
+- [ ] 涉及性能：`./scripts/perf_smoke_fast.sh`
 
 ## Checklist
 
