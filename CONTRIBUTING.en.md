@@ -29,17 +29,12 @@ cargo fmt --all -- --check
 cargo clippy --all-targets -- -D warnings
 cargo test --all
 ./scripts/community_boundary_check.sh
-./scripts/security_audit.sh        # 需 cargo-audit/deny/cyclonedx
+./scripts/security_audit.sh        # requires cargo-audit/deny/cyclonedx
 ```
 
-For changes involving WAL/replication/HA, additionally run:
-
-```bash
-./scripts/replication_drill.sh
-./scripts/concurrency_check.sh
-./scripts/turmoil_check.sh
-./scripts/chaos_drill.sh
-```
+The development repository additionally runs replication, concurrency, turmoil,
+and chaos drills for WAL/replication/HA changes. The public repository keeps
+unit/integration tests and the reproducible benchmark adapter.
 
 ## 3. Code and Commit Conventions
 

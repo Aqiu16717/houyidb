@@ -15,8 +15,7 @@ cargo bench -p houyi-vector --bench vector_baseline -- \
   --warm-up-time 1
 
 echo ""
-echo "==> 下一步（完整性能验证，需人工对照 Qdrant）"
+echo "==> 下一步（完整性能验证）"
 echo "    1) 终端 A: cargo run -p houyi-server --bin houyi-server -- --benchmark-http-addr 127.0.0.1:7000"
-echo "    2) 终端 B: cd ../vectorDBBench-houyidb && source .venv/bin/activate"
-echo "    3) 见 VDBBENCH_PROTOCOL.md §4 中 houyidb --transport http 与 qdrantlocal 同参命令"
-echo "    4) 将摘要写入 bench-baseline.md §P0.4，并勾选 TODO.md P0.4 对应项"
+echo "    2) 按 VDBBENCH_PROTOCOL.md 安装/运行 benchmarks/vectordb_bench_houyidb"
+echo "    3) 结果按 docs/benchmarks/houyidb-performance-2026-10.md 的格式记录"

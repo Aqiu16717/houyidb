@@ -34,14 +34,8 @@ cargo test --all
 ./scripts/security_audit.sh        # 需 cargo-audit/deny/cyclonedx
 ```
 
-涉及 WAL/复制/HA 的改动，另跑：
-
-```bash
-./scripts/replication_drill.sh
-./scripts/concurrency_check.sh
-./scripts/turmoil_check.sh
-./scripts/chaos_drill.sh
-```
+涉及 WAL/复制/HA 的改动，开发仓会额外跑 replication/concurrency/turmoil/chaos
+演练；公共仓保留单元/集成测试与可复现的 benchmark 适配器。
 
 ## 3. 代码与提交规范
 

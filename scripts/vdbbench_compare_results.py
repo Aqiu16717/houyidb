@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare two VectorDBBench result JSON files (e.g. QdrantLocal vs HouyiDB).
+"""Compare two VectorDBBench result JSON files (reference vs HouyiDB).
 
 用法 / Usage:
   python3 scripts/vdbbench_compare_results.py Q.json A.json
@@ -45,7 +45,7 @@ def main() -> int:
     ap.add_argument(
         "left_json",
         type=Path,
-        help="First result JSON (e.g. QdrantLocal)",
+        help="First result JSON (reference run)",
     )
     ap.add_argument(
         "right_json",
@@ -69,7 +69,7 @@ def main() -> int:
         action="store_true",
         help=(
             "Exit 2 when right recall or ndcg is strictly less than left "
-            "(e.g. HouyiDB vs Qdrant)."
+            "(e.g. reference run vs HouyiDB)."
         ),
     )
     args = ap.parse_args()

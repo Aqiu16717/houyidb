@@ -434,18 +434,18 @@
               <span>Terminal / reproduce</span>
               <span class="terminal-hint">bash</span>
             </div>
-            <pre><code>export VDB_ROOT=/path/to/VectorDBBench   # working copy with the HouyiDB adapter
-./scripts/perf_regression_gate.sh vdb
+            <pre><code>export VDB_ROOT=/path/to/VectorDBBench
+python3 benchmarks/vectordb_bench_houyidb/install.py --vdb-root "$VDB_ROOT"
 
-# High QPS: 1×M
-HOUYI_HNSW_LAYER0_MULT=1 ./scripts/perf_regression_gate.sh vdb
+# Start houyi-server, then run
+VDB_ROOT="$VDB_ROOT" ./benchmarks/vectordb_bench_houyidb/run_bench.sh
 
-# Control: fall back to the old graph-merge path
-HOUYI_HNSW_PLAN_APPLY=0 ./scripts/perf_regression_gate.sh vdb</code></pre>
+# 1× / old graph-merge path: set before starting the server
+# HOUYI_HNSW_LAYER0_MULT=1 / HOUYI_HNSW_PLAN_APPLY=0</code></pre>
           </div>
 
           <div class="callout">
-            <strong>Warning:</strong> the self-test gate runs preflight, which stops an existing local houyi-server, frees development ports, and clears the development WAL. <strong>Do not run it in production.</strong> Clean-room rules and the full comparison flow are defined by the protocol.
+            <strong>Warning:</strong> the benchmark writes/rebuilds a test collection. Use an isolated empty WAL and data directory; <strong>do not point it at production data</strong>. The protocol defines the full flow.
           </div>
 
           <ul class="status-list">

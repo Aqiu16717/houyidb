@@ -105,35 +105,25 @@ curl -fsS http://127.0.0.1:6333/collections
 For local access, set `NO_PROXY=127.0.0.1,localhost` to avoid system proxy
 hijacking requests.
 
-## 5. One-Shot Comparison
+## 5. One-Shot Run
+
+The public adapter lives in `benchmarks/vectordb_bench_houyidb/` and uses the
+same defaults as this document:
 
 ```bash
-# 0) Check the venv, parameters, and both service addresses (no load generated)
-./scripts/vdbbench_qdrant_houyidb_gate.sh check
+# 1) Install the adapter into a local VectorDBBench checkout
+python3 benchmarks/vectordb_bench_houyidb/install.py --vdb-root "$VDB_ROOT"
 
-# 1) Clean the local dev environment: stop the old houyi-server, free ports, delete the dev WAL
-#    !! Deletes local development data; do not run in production !!
-./scripts/vdbbench_qdrant_houyidb_gate.sh preflight
+# 2) Start houyi-server (empty WAL), then run the benchmark
+VDB_ROOT="$VDB_ROOT" ./benchmarks/vectordb_bench_houyidb/run_bench.sh
 
-# 2) Run the same parameter set against both sides
-./scripts/vdbbench_qdrant_houyidb_gate.sh run-qdrant
-./scripts/vdbbench_qdrant_houyidb_gate.sh run-houyidb
-
-# 3) Compare the two result JSON files (optionally with recall/ndcg gates)
-./scripts/vdbbench_qdrant_houyidb_gate.sh compare \
-  "$VDB_ROOT/vectordb_bench/results/QdrantLocal/result_*.json" \
-  "$VDB_ROOT/vectordb_bench/results/HouyiDB/result_*.json" \
+# 3) Optionally compare two result JSON files (with recall/ndcg gates)
+python3 scripts/vdbbench_compare_results.py <reference.json> <houyidb.json> \
   --min-recall 0.95
-
-# 4) Generate a result record template (prefills recall/ndcg/p95/p99/qps/load_duration)
-./scripts/vdbbench_qdrant_houyidb_gate.sh snapshot-template \
-  <qdrant.json> <houyidb.json>
 ```
 
-Before benchmarking, the script performs a connectivity preflight:
-
-- HouyiDB: `GET http://$HOUYI_HOST:$HOUYI_HTTP_PORT/v1/health`
-- Qdrant: `GET $QDRANT_URL/collections`
+The script checks HouyiDB `GET /v1/health` before running; start and verify any
+external baseline with its own client.
 
 It fails immediately and prints the target address when unreachable, avoiding
 empty runs.
@@ -194,9 +184,8 @@ Metric definitions:
 
 ## 9. Reproduction and Regression
 
-- Self-test gate in this repository: `./scripts/perf_regression_gate.sh vdb`
-  (HouyiDB side; thresholds in `scripts/perf_regression_thresholds.json`,
-  overridable via environment variables);
+- Self-test in this repository: `./scripts/perf_smoke_fast.sh` and
+  `benchmarks/vectordb_bench_houyidb/`;
 - Keep the raw JSON and logs of failed runs; after a fix is merged, re-run with
   the same parameters;
 - Result reports should give both absolute numbers and relative ratios, and

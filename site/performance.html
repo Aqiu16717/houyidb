@@ -434,18 +434,18 @@
               <span>Terminal / reproduce</span>
               <span class="terminal-hint">bash</span>
             </div>
-            <pre><code>export VDB_ROOT=/path/to/VectorDBBench   # 含 HouyiDB 适配器的工作副本
-./scripts/perf_regression_gate.sh vdb
+            <pre><code>export VDB_ROOT=/path/to/VectorDBBench
+python3 benchmarks/vectordb_bench_houyidb/install.py --vdb-root "$VDB_ROOT"
 
-# 高 QPS：1×M
-HOUYI_HNSW_LAYER0_MULT=1 ./scripts/perf_regression_gate.sh vdb
+# 启动 houyi-server 后运行
+VDB_ROOT="$VDB_ROOT" ./benchmarks/vectordb_bench_houyidb/run_bench.sh
 
-# 对照：回退旧合图路径
-HOUYI_HNSW_PLAN_APPLY=0 ./scripts/perf_regression_gate.sh vdb</code></pre>
+# 1× / 旧合图路径：在启动服务前设置
+# HOUYI_HNSW_LAYER0_MULT=1 / HOUYI_HNSW_PLAN_APPLY=0</code></pre>
           </div>
 
           <div class="callout">
-            <strong>注意：</strong>自测门禁会执行 preflight，停止本机旧的 houyi-server、释放开发端口并清理开发 WAL。<strong>生产环境不要执行。</strong> 完整对照流程与 clean-room 约定以协议文档为准。
+            <strong>注意：</strong>benchmark 会写入/重建测试 collection，请使用独立的空 WAL 与数据目录，<strong>不要指向生产数据</strong>。完整流程以协议文档为准。
           </div>
 
           <ul class="status-list">

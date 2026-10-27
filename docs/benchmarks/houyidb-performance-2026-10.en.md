@@ -135,15 +135,13 @@ for bulk loading (Cohere 1M: 1170s vs 1055s); set
 
 ```bash
 # Method and parameters: VDBBENCH_PROTOCOL.md. This repository publishes no
-# third-party comparison data; run any external comparison yourself and record
-# versions, parameters, and hardware.
-export VDB_ROOT=/path/to/VectorDBBench   # with the houyidb client adapter
-./scripts/vdbbench_qdrant_houyidb_gate.sh check
-./scripts/vdbbench_qdrant_houyidb_gate.sh run-houyidb
+# third-party comparison data.
+export VDB_ROOT=/path/to/VectorDBBench
+python3 benchmarks/vectordb_bench_houyidb/install.py --vdb-root "$VDB_ROOT"
 
-# 1× mode (high QPS)
-HOUYI_HNSW_LAYER0_MULT=1 ./scripts/vdbbench_qdrant_houyidb_gate.sh run-houyidb
+# Start houyi-server first; set 1× / PLAN_APPLY before starting the server
+VDB_ROOT="$VDB_ROOT" ./benchmarks/vectordb_bench_houyidb/run_bench.sh
 
-# Fall back to the old graph-merge path (control)
-HOUYI_HNSW_PLAN_APPLY=0 ./scripts/vdbbench_qdrant_houyidb_gate.sh run-houyidb
+# 1× mode (before server start: HOUYI_HNSW_LAYER0_MULT=1)
+# Old graph-merge path (before server start: HOUYI_HNSW_PLAN_APPLY=0)
 ```

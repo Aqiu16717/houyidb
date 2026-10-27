@@ -311,13 +311,9 @@ cargo test -p houyi-server
 # Full smoke (including recall)
 ./scripts/perf_smoke.sh
 
-# Regression gate
-./scripts/perf_regression_gate.sh vdb          # VDB 基准
-./scripts/perf_regression_gate.sh incremental  # 增量压测
-./scripts/perf_regression_gate.sh all          # 全部
-
-# Clean ports/WAL (before benchmarking)
-./scripts/vdb_houyidb_preflight.sh
+# VectorDBBench comparison
+python3 benchmarks/vectordb_bench_houyidb/install.py --vdb-root "$VDB_ROOT"
+VDB_ROOT="$VDB_ROOT" ./benchmarks/vectordb_bench_houyidb/run_bench.sh
 ```
 
 ---

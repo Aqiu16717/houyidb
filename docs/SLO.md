@@ -34,19 +34,19 @@
 | upsert（full_sync） | p99 端到端 | ≤ 2× `replication_sync_timeout_ms`（默认 2s → 4s 上限） |
 | pgwire 简单查询 | p99 | 与 HTTP 同口径 |
 
-延迟只统计成功请求；超时/5xx 计入可用性错误预算。目标以
-`scripts/perf_regression_gate.sh` 的接口路径分账数据为准。
+延迟只统计成功请求；超时/5xx 计入可用性错误预算。目标以部署侧观测与
+`VDBBENCH_PROTOCOL.md` 的自测数据为准。
 
 ### 2.3 复制与持久性（RPO / RTO）
 
 | HA 级别 | RPO 目标 | 说明 |
 |---------|----------|------|
-| full_sync | **0** | 已 ACK 的写必须在 follower 持久态；RPO=0 由 replication_drill 断言 |
+| full_sync | **0** | 已 ACK 的写必须在 follower 持久态；由 full_sync ACK 语义与故障演练断言 |
 | semi_sync | 0（等待超时则降级） | 超时降级 async，窗口见 `sync_timeouts_total` |
 | async | 有界（≤ 1s） | 受 WAL flush 策略约束；不是持久性承诺 |
 
 - **RTO 目标**：单节点重启恢复 ≤ 60s（有图快照，1M 向量级）；手动 promote
-  ≤ 30s。可用 `scripts/rto_drill.sh` 在本机复测。
+  ≤ 30s。按部署指南做重启/promote 演练并记录实测。
 - 复制滞后 SLI：`houyidb_replication_lag_entries` p95 ≤ 1000 且 5 分钟均值
   ≤ 100；超过走[复制滞后 Runbook](runbooks/replication-lag.md)。
 

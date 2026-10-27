@@ -118,15 +118,13 @@ VectorDBBench 的 streaming ground truth 是**全集静态**的，而写入是�
 ## 7. 复现
 
 ```bash
-# 环境与公平参数见 VDBBENCH_PROTOCOL.md；本仓库不发布第三方系统对比数据，
-# 如需外部对照，请按协议自行执行并注明版本、参数与机器。
-export VDB_ROOT=/path/to/VectorDBBench   # 含 houyidb client 适配器
-./scripts/vdbbench_qdrant_houyidb_gate.sh check
-./scripts/vdbbench_qdrant_houyidb_gate.sh run-houyidb
+# 环境与参数见 VDBBENCH_PROTOCOL.md；本仓库不发布第三方系统对比数据。
+export VDB_ROOT=/path/to/VectorDBBench
+python3 benchmarks/vectordb_bench_houyidb/install.py --vdb-root "$VDB_ROOT"
 
-# 1× 模式（高 QPS）
-HOUYI_HNSW_LAYER0_MULT=1 ./scripts/vdbbench_qdrant_houyidb_gate.sh run-houyidb
+# 启动 houyi-server 后运行；1× 与 PLAN_APPLY 开关必须在启动服务前设置
+VDB_ROOT="$VDB_ROOT" ./benchmarks/vectordb_bench_houyidb/run_bench.sh
 
-# 回退旧合图路径（对照）
-HOUYI_HNSW_PLAN_APPLY=0 ./scripts/vdbbench_qdrant_houyidb_gate.sh run-houyidb
+# 1× 模式（启动服务前：HOUYI_HNSW_LAYER0_MULT=1）
+# 回退旧合图路径（启动服务前：HOUYI_HNSW_PLAN_APPLY=0）
 ```

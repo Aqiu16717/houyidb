@@ -99,35 +99,24 @@ curl -fsS http://127.0.0.1:6333/collections
 
 本机访问请设置 `NO_PROXY=127.0.0.1,localhost`，避免系统代理劫持请求。
 
-## 5. 一键对照
+## 5. 一键运行
+
+本仓库公开的适配器在 `benchmarks/vectordb_bench_houyidb/`，默认参数与本文一致：
 
 ```bash
-# 0) 检查 venv、参数与两个服务的地址（不产生负载）
-./scripts/vdbbench_qdrant_houyidb_gate.sh check
+# 1) 把适配器装进本地 VectorDBBench 工作副本
+python3 benchmarks/vectordb_bench_houyidb/install.py --vdb-root "$VDB_ROOT"
 
-# 1) 清理本机开发环境：停旧 houyi-server、释放端口、删除 dev WAL
-#    !! 会删除本地开发数据，生产环境不要执行 !!
-./scripts/vdbbench_qdrant_houyidb_gate.sh preflight
+# 2) 启动 houyi-server（空 WAL），然后运行 benchmark
+VDB_ROOT="$VDB_ROOT" ./benchmarks/vectordb_bench_houyidb/run_bench.sh
 
-# 2) 分别对两侧跑同一组参数
-./scripts/vdbbench_qdrant_houyidb_gate.sh run-qdrant
-./scripts/vdbbench_qdrant_houyidb_gate.sh run-houyidb
-
-# 3) 对比两份结果 JSON（可带 recall/ndcg 门禁）
-./scripts/vdbbench_qdrant_houyidb_gate.sh compare \
-  "$VDB_ROOT/vectordb_bench/results/QdrantLocal/result_*.json" \
-  "$VDB_ROOT/vectordb_bench/results/HouyiDB/result_*.json" \
+# 3) 如需对比两份结果 JSON（可带 recall/ndcg 门禁）
+python3 scripts/vdbbench_compare_results.py <reference.json> <houyidb.json> \
   --min-recall 0.95
-
-# 4) 生成结果记录模板（自动预填 recall/ndcg/p95/p99/qps/load_duration）
-./scripts/vdbbench_qdrant_houyidb_gate.sh snapshot-template \
-  <qdrant.json> <houyidb.json>
 ```
 
-脚本在跑分前会做连通性预检：
-
-- HouyiDB：`GET http://$HOUYI_HOST:$HOUYI_HTTP_PORT/v1/health`
-- Qdrant：`GET $QDRANT_URL/collections`
+脚本在跑分前会检查 HouyiDB `GET /v1/health`；外部基线请按你自己的客户端启动并
+确认可达。
 
 不可达时立即失败并打印目标地址，避免空跑。
 
@@ -179,7 +168,6 @@ curl -fsS http://127.0.0.1:6333/collections
 
 ## 9. 复现与回归
 
-- 本仓库自测门禁：`./scripts/perf_regression_gate.sh vdb`（HouyiDB 侧；
-  阈值在 `scripts/perf_regression_thresholds.json`，可用环境变量覆盖）；
+- 本仓库自测：`./scripts/perf_smoke_fast.sh` 与 `benchmarks/vectordb_bench_houyidb/`；
 - 保留失败运行的原始 JSON 与日志，修复合入后同参数复跑；
 - 结果报告建议同时给出绝对数值与相对比值，并注明机器规格与版本。

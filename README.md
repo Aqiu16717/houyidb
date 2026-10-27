@@ -50,8 +50,8 @@ cargo run -p houyi-vector --example recall_gate --release
 ```
 
 VectorDBBench 复现协议见 `VDBBENCH_PROTOCOL.md` 与
-`./scripts/vdbbench_qdrant_houyidb_gate.sh`；本仓公开报告只含 HouyiDB
-自测数据，不发布第三方系统对比结果。
+`benchmarks/vectordb_bench_houyidb/`；本仓公开报告只含 HouyiDB 自测数据，
+不发布第三方系统对比结果。
 
 HNSW 连接密度：服务端 level-0 默认 **2×M**（召回优先，兼容旧图快照）；
 高 QPS 场景显式设 `HOUYI_HNSW_LAYER0_MULT=1`（VDB campaign 默认 1×）。

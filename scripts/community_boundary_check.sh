@@ -24,7 +24,7 @@ pattern='houyidb-enterprise|houyi-enterprise|houyidb_enterprise|houyi_enterprise
 hits=$(git grep -n -I -E "$pattern" -- \
   '*.rs' '*.toml' '*.yml' '*.yaml' 'Cargo.lock' 'Dockerfile' 'scripts/*' \
   ':!docs/*' ':!LICENSING.md' ':!CONTRIBUTING.md' ':!SECURITY.md' \
-  ':!CLA.md' ':!TRADEMARK.md' ':!docs/OPEN_SOURCE_PLAN.md' \
+  ':!CLA.md' ':!TRADEMARK.md' \
   ':!scripts/community_boundary_check.sh' || true)
 if [[ -n "$hits" ]]; then
   echo "$hits" >&2

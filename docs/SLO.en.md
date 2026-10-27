@@ -34,19 +34,19 @@
 | upsert (full_sync) | p99 end-to-end | ≤ 2× `replication_sync_timeout_ms` (default 2s → 4s cap) |
 | pgwire simple query | p99 | Same criteria as HTTP |
 
-Latency counts successful requests only; timeouts/5xx are charged to the availability error budget. Targets
-follow the per-interface-path accounting data from `scripts/perf_regression_gate.sh`.
+Latency counts successful requests only; timeouts/5xx are charged to the availability error budget.
+Targets follow deployment-side observations and the self-benchmark data in `VDBBENCH_PROTOCOL.md`.
 
 ### 2.3 Replication and Durability (RPO / RTO)
 
 | HA level | RPO target | Description |
 |---------|----------|------|
-| full_sync | **0** | An acknowledged write must be durable on the follower; RPO=0 is asserted by replication_drill |
+| full_sync | **0** | An acknowledged write must be durable on the follower; asserted by full_sync ACK semantics and failure drills |
 | semi_sync | 0 (degrades on wait timeout) | Degrades to async on timeout; the window is tracked by `sync_timeouts_total` |
 | async | Bounded (≤ 1s) | Constrained by the WAL flush policy; not a durability guarantee |
 
 - **RTO target**: single-node restart recovery ≤ 60s (with a graph snapshot, 1M-vector scale); manual promote
-  ≤ 30s. Re-measure locally with `scripts/rto_drill.sh`.
+  ≤ 30s. Measure it with the restart/promote drills in the deployment guide.
 - Replication lag SLI: `houyidb_replication_lag_entries` p95 ≤ 1000 and 5-minute mean
   ≤ 100; beyond that, follow the [Replication Lag Runbook](runbooks/replication-lag.md).
 

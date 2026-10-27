@@ -108,6 +108,25 @@ jobs:
         working-directory: sdk/typescript/houyidb
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm ci
+        working-directory: mcp/houyidb-mcp
+      - run: npm run build
+        working-directory: mcp/houyidb-mcp
+      - run: npm test
+        working-directory: mcp/houyidb-mcp
+      - run: npm pack --pack-destination dist
+        working-directory: mcp/houyidb-mcp
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-mcp-package
+          path: mcp/houyidb-mcp/dist/*.tgz
+      - if: >-
+          (github.event_name == 'release' || inputs.publish) &&
+          (github.event_name == 'release' || contains(inputs.ecosystems, 'npm'))
+        run: npm publish --provenance --access public
+        working-directory: mcp/houyidb-mcp
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   nuget:
     name: NuGet

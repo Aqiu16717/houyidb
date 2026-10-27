@@ -44,4 +44,4 @@ run_filter "build_flush_once" "dims_batch"
 
 echo ""
 echo "==> 完成。若需 recall_check_hnsw_after_flush，请运行: ./scripts/perf_smoke.sh"
-echo "==> VectorDBBench / Qdrant 对标见 VDBBENCH_PROTOCOL.md"
+echo "==> VectorDBBench 对照协议见 VDBBENCH_PROTOCOL.md"

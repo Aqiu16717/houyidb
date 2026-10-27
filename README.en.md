@@ -50,7 +50,7 @@ cargo run -p houyi-vector --example recall_gate --release
 ```
 
 For the reproducible VectorDBBench protocol, see `VDBBENCH_PROTOCOL.md` and
-`./scripts/vdbbench_qdrant_houyidb_gate.sh`. Public reports in this repository
+`benchmarks/vectordb_bench_houyidb/`. Public reports in this repository
 contain HouyiDB self-measurements only; no third-party comparison results are
 published.
 
