@@ -91,7 +91,9 @@ jobs:
         working-directory: sdk/typescript/houyidb
       - run: npm run build
         working-directory: sdk/typescript/houyidb
-      - run: npm test
+      # 集成测试需要已启动的 houyi-server；发布门禁只跑单元测试。
+      # EN: integration tests need a running houyi-server; run unit tests only.
+      - run: npm test -- --exclude tests/integration.test.ts
         working-directory: sdk/typescript/houyidb
       - run: npm pack --pack-destination dist
         working-directory: sdk/typescript/houyidb
