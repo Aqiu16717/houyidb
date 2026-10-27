@@ -38,8 +38,7 @@
 ### Added
 - **Filtered-search contiguous vector cache**: matched vectors are lazily copied into a contiguous `Vec<f32>` by label (Cosine
   pre-normalized), degrading filtered queries to sequential SIMD scans + top-k, invalidated after writes. Cohere 1M
-  1% filter benchmark: ef128 **1365 QPS** (Qdrant 804), ef256 **1386** (Qdrant 671),
-  recall 1.0.
+  1% filter benchmark: ef128 **1365 QPS**, ef256 **1386 QPS**, recall 1.0.
 - **HNSW experimental knobs** (disabled by default): `HOUYI_HNSW_KEEP_PRUNED=1` (keepPruned
   connections, mature recall .996→.9976), `HOUYI_HNSW_RERANK_EXPAND=N` (query-side
   neighbor expansion), `HOUYI_HNSW_COMMIT_CHUNK=N` (serial graph merge with short-lock commits).

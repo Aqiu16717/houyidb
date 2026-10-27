@@ -276,7 +276,7 @@ fn normalize_for_cosine(metric: DistanceMetric, v: &[f32]) -> Arc<Vec<f32>> {
 /// Per-layer max degree. Multipliers set via `set_layer_multipliers()`; defaults: L0=2x, upper=0.5x.
 ///
 /// 高 QPS（旧行为）: 设置 L0=1.0, upper=0.5。
-/// Qdrant 上层全对齐（L0=2M/upper=M）: 设置 L0=2.0, upper=1.0。
+/// 上层对齐（L0=2M/upper=M）: 设置 L0=2.0, upper=1.0。
 fn layer_m(m: usize, layer: usize) -> usize {
     let mults = effective_layer_multipliers();
     if layer == 0 {
@@ -585,8 +585,8 @@ fn search_layer_inner_filtered(
             _ => continue,
         };
         for &e in nbrs {
-            // 跳过不在 filter_set 中的邻居 — 对标 Qdrant payload index 图内过滤
-            // EN: Skip neighbors not in filter_set — mirrors Qdrant payload-index in-graph filtering.
+            // 跳过不在 filter_set 中的邻居 — 图内过滤（参考常见 payload index 实现）
+            // EN: Skip neighbors not in filter_set — in-graph filtering (cf. common payload-index implementations).
             if !filter_set.contains(&e) {
                 continue;
             }
@@ -1562,7 +1562,7 @@ impl HnswGraph {
         candidates
     }
 
-    /// 带 filter 的多层搜索：遍历时仅访问 filter_set 内节点（对标 Qdrant payload index）。
+    /// 带 filter 的多层搜索：遍历时仅访问 filter_set 内节点（图内过滤）。
     /// Filtered multi-layer search: only visits nodes in filter_set during traversal.
     pub fn search_with_filter(
         &self,

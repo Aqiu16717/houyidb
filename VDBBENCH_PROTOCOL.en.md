@@ -11,7 +11,7 @@
 ## 1. Tooling and Prerequisites
 
 - Benchmark tool: `VectorDBBench` (local working copy, hereinafter `VDB_ROOT`).
-- Comparison system: `Qdrant`, running on the same machine.
+- External baseline: optional; this document does not bind to a specific product.
 - HouyiDB's VectorDBBench client adapter is not in this repository: point
   `VDB_ROOT` at a working copy that contains the adapter, or integrate
   manually via `--transport http`.
@@ -22,7 +22,8 @@ cd "$VDB_ROOT"
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -U pip
-python -m pip install -e ".[test,qdrant]"
+python -m pip install -e ".[test]"
+# install the external baseline's VectorDBBench client extra separately
 ```
 
 This repository's comparison scripts resolve `VDB_ROOT` by default to
@@ -43,7 +44,7 @@ export VDB_ROOT=/path/to/VectorDBBench
 - **Same process**: both execute `load -> optimize -> search_serial ->
   search_concurrent`.
 - **Consistent cold start**: the HouyiDB side starts with an empty database and
-  no old WAL; the Qdrant side likewise uses an empty collection.
+  no old WAL; the external baseline likewise uses an empty collection.
 - **Failures visible**: OOM, timeouts, and connection errors must be written
   into the results; silent retries or discards are not allowed.
 - **No mixed comparisons**: results from different cases, different `k`,
@@ -68,7 +69,6 @@ environment variables; **both sides must use the same set of values**:
 | `VDB_HOUYI_TRANSPORT` | `pgwire` | `pgwire` or `http` |
 | `HOUYI_PG_PORT` | `15432` | HouyiDB pgwire port |
 | `HOUYI_HTTP_PORT` | `17000` | HouyiDB HTTP port |
-| `QDRANT_URL` | `http://127.0.0.1:6333` | Qdrant HTTP address |
 
 `HOUYI_HNSW_*` build parameters (e.g. `HOUYI_HNSW_MAX_BUILD_BATCH`,
 `HOUYI_HNSW_PARALLEL_BATCH_BUILD`) are server-side tuning knobs; they must be
@@ -95,12 +95,8 @@ HouyiDB (server parameters must align with the bench's `m` / `ef_construction`):
 snapshots do not affect the write phase; if you need to validate the snapshot
 path, run a separate set with annotated parameters.
 
-Qdrant (native binary or container):
-
-```bash
-# Confirm Qdrant is reachable after starting it
-curl -fsS http://127.0.0.1:6333/collections
-```
+External baseline (optional): start it per its own documentation and verify its
+client is reachable; this repository does not bind to a specific product.
 
 For local access, set `NO_PROXY=127.0.0.1,localhost` to avoid system proxy
 hijacking requests.
@@ -153,7 +149,7 @@ Each run must save at least:
 - A summary table: case, recall@k, ndcg@k, p50/p95/p99,
   `qps`, `load_duration`, `insert_duration`, `optimize_duration`;
 - Key parameters: `m` / `ef_construction` / `ef_search` / concurrency / duration;
-- Server and build information: HouyiDB version or commit, Qdrant version,
+- Server and build information: HouyiDB version or commit, external baseline version,
   `transport`, `HNSW_*` environment variables, CPU/memory/filesystem;
 - Failures and anomalies: OOM, timeouts, retry counts, log excerpts.
 

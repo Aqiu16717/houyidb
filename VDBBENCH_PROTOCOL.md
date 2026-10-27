@@ -13,10 +13,9 @@
 ## 1. 工具与前提
 
 - 基准工具：`VectorDBBench`（本地工作副本，下称 `VDB_ROOT`）。
-- 对标系统：`Qdrant`，同一台机器运行。
-- HouyiDB 的 VectorDBBench client 适配器不在本仓库内：请把
-  `VDB_ROOT` 指向包含该适配器的工作副本，或按 `--transport http`
-  自行接入。
+- 外部基线：可选；本文不绑定具体产品，安装与启动方式以该产品文档为准。
+- HouyiDB 的 VectorDBBench 适配器在 `benchmarks/vectordb_bench_houyidb/`，
+  按第 5 节安装到 `VDB_ROOT`。
 - Python 3.10+，建议独立 venv：
 
 ```bash
@@ -24,11 +23,9 @@ cd "$VDB_ROOT"
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -U pip
-python -m pip install -e ".[test,qdrant]"
+python -m pip install -e ".[test]"
+# 如需外部基线，再安装该产品的 VectorDBBench 客户端依赖
 ```
-
-本仓库的对照脚本默认把 `VDB_ROOT` 解析为与 `houyidb` 同级的
-`vectorDBBench-houyidb/`；目录不同时显式覆盖：
 
 ```bash
 export VDB_ROOT=/path/to/VectorDBBench
@@ -42,7 +39,7 @@ export VDB_ROOT=/path/to/VectorDBBench
 - **同一硬件**：同机运行；不要让两侧共享 CPU 峰值窗口以外的负载。
 - **同一流程**：都执行 `load -> optimize -> search_serial ->
   search_concurrent`。
-- **冷启动一致**：HouyiDB 侧在空库、无旧 WAL 的状态下开始；Qdrant 侧
+- **冷启动一致**：HouyiDB 侧在空库、无旧 WAL 的状态下开始；外部基线
   同样使用空 collection。
 - **失败可见**：OOM、超时、连接错误必须写入结果，不允许静默重试或丢弃。
 - **不混比**：不同 case、不同 `k`、不同并发、不同 transport 的结果不能
@@ -65,7 +62,6 @@ export VDB_ROOT=/path/to/VectorDBBench
 | `VDB_HOUYI_TRANSPORT` | `pgwire` | `pgwire` 或 `http` |
 | `HOUYI_PG_PORT` | `15432` | HouyiDB pgwire 端口 |
 | `HOUYI_HTTP_PORT` | `17000` | HouyiDB HTTP 端口 |
-| `QDRANT_URL` | `http://127.0.0.1:6333` | Qdrant HTTP 地址 |
 
 `HOUYI_HNSW_*` 构图参数（如 `HOUYI_HNSW_MAX_BUILD_BATCH`、
 `HOUYI_HNSW_PARALLEL_BATCH_BUILD`）属于服务端调优项，必须在启动
@@ -90,12 +86,7 @@ HouyiDB（服务端参数需与 bench 的 `m` / `ef_construction` 对齐）：
 `--snapshot-interval-secs 0` 关闭周期图快照，避免后台快照影响写阶段；
 如果需要验证快照路径，请单独做一组注明参数的运行。
 
-Qdrant（原生二进制或容器均可）：
-
-```bash
-# 启动 Qdrant 后确认可达
-curl -fsS http://127.0.0.1:6333/collections
-```
+外部基线（可选）：按该产品文档启动，并确认其客户端可达；本仓库不绑定具体产品。
 
 本机访问请设置 `NO_PROXY=127.0.0.1,localhost`，避免系统代理劫持请求。
 
@@ -143,7 +134,7 @@ python3 scripts/vdbbench_compare_results.py <reference.json> <houyidb.json> \
 - 一份摘要表：case、recall@k、ndcg@k、p50/p95/p99、
   `qps`、`load_duration`、`insert_duration`、`optimize_duration`；
 - 关键参数：`m` / `ef_construction` / `ef_search` / 并发 / 持续时间；
-- 服务端与构建信息：HouyiDB 版本或 commit、Qdrant 版本、
+- 服务端与构建信息：HouyiDB 版本或 commit、外部基线版本、
   `transport`、`HNSW_*` 环境变量、CPU/内存/文件系统；
 - 失败与异常：OOM、超时、重试次数、日志片段。
 

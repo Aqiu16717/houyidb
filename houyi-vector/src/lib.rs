@@ -1880,13 +1880,13 @@ impl HotBufferIndex {
         let main = self.main_index.read().await;
 
         // —— 智能策略选择：基于 mask 大小 ——
-        // (1) 小 mask (≤50K)：rayon 全量并行暴力 + NEON SIMD（已验证 306.9 QPS，超 Qdrant）
-        // (2) 大 mask (>50K)：filter 推入 HNSW 图遍历内部（对标 Qdrant payload index）
+        // (1) 小 mask (≤50K)：rayon 全量并行暴力 + NEON SIMD（已验证 306.9 QPS）
+        // (2) 大 mask (>50K)：filter 推入 HNSW 图遍历内部（图内过滤）
         // (3) 无 mask：原有 ANN 逻辑
         //
         // EN: Intelligent strategy based on mask size:
         // (1) Small mask (≤50K): rayon parallel brute-force + NEON SIMD (validated 306.9 QPS)
-        // (2) Large mask (>50K): filter pushed into HNSW graph traversal (cf. Qdrant payload index)
+        // (2) Large mask (>50K): filter pushed into HNSW graph traversal (in-graph filtering)
         // (3) No mask: original ANN logic
         let is_small_mask = filter_mask.map(|m| m.len() <= 50_000).unwrap_or(false);
 

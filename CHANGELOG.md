@@ -38,8 +38,7 @@
 ### Added
 - **标签过滤连续向量缓存**：命中向量按标签惰性拷贝为连续 `Vec<f32>`（Cosine
   预先单位化），过滤查询退化为顺序 SIMD 扫描 + top-k，写后失效。Cohere 1M
-  1% 过滤实测 ef128 **1365 QPS**（Qdrant 804）、ef256 **1386**（Qdrant 671），
-  recall 1.0。
+  1% 过滤实测 ef128 **1365 QPS**、ef256 **1386 QPS**，recall 1.0。
 - **HNSW 实验旋钮**（默认关闭）：`HOUYI_HNSW_KEEP_PRUNED=1`（keepPruned
   connections，成熟召回 .996→.9976）、`HOUYI_HNSW_RERANK_EXPAND=N`（查询侧
   邻居扩展）、`HOUYI_HNSW_COMMIT_CHUNK=N`（串行合图短锁提交）。
