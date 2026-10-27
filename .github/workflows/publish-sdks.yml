@@ -35,14 +35,22 @@ jobs:
     if: github.repository == 'houyidb-community/houyidb'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    environment: pypi
+    # PyPI 的 pending publisher 以 (owner, repo, workflow, environment) 唯一：
+    # 同一个 monorepo 不能给多个未创建项目复用同一组配置。每个包使用独立
+    # environment，分别登记 pending publisher。
+    # EN: PyPI pending publishers are unique per (owner, repo, workflow,
+    # EN: environment). Use one environment per package in a monorepo.
+    environment: ${{ matrix.pypi_env }}
     strategy:
       fail-fast: false
       matrix:
-        pkg:
-          - sdk/python/houyidb
-          - sdk/python/langchain-houyidb
-          - sdk/python/llama-index-vector-stores-houyidb
+        include:
+          - pkg: sdk/python/houyidb
+            pypi_env: pypi
+          - pkg: sdk/python/langchain-houyidb
+            pypi_env: pypi-langchain
+          - pkg: sdk/python/llama-index-vector-stores-houyidb
+            pypi_env: pypi-llama
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

@@ -37,15 +37,23 @@ then the Go tag.
 ## 2. PyPI (Trusted Publishing Recommended)
 
 1. Register at <https://pypi.org> and enable 2FA.
-2. Add a **pending publisher** for each project (before the project exists):
-   - Project: `houyidb` / `langchain-houyidb` /
-     `llama-index-vector-stores-houyidb`
-   - Owner: `houyidb-community`
-   - Repository: `houyidb`
-   - Workflow: `publish-sdks.yml`
-   - Environment: `pypi`
-3. Create the `pypi` environment in GitHub repository Settings (no secret
-   needed).
+2. **Important**: PyPI pending publishers are unique per
+   `(owner, repository, workflow, environment)`. A monorepo cannot reuse one
+   configuration for multiple not-yet-created projects; the third attempt
+   fails with `A pending trusted publisher matching this configuration has
+   already been registered for a different project name`. Use one environment
+   per package:
+
+   | PyPI Project Name | Environment |
+   |-------------------|-------------|
+   | `houyidb` | `pypi` |
+   | `langchain-houyidb` | `pypi-langchain` |
+   | `llama-index-vector-stores-houyidb` | `pypi-llama` |
+
+   All three use Owner `houyidb-community`, Repository `houyidb`, Workflow
+   `publish-sdks.yml`.
+3. Create the `pypi`, `pypi-langchain`, and `pypi-llama` environments in GitHub
+   repository Settings (no secret needed).
 4. Push a `v*` tag or run `Publish SDKs` manually with publish enabled.
 5. Manual fallback:
 

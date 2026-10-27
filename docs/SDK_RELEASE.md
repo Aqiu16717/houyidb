@@ -33,14 +33,22 @@
 ## 2. PyPI（推荐 Trusted Publishing）
 
 1. 注册 <https://pypi.org>，开启 2FA。
-2. 对三个项目分别添加 **pending publisher**（项目还不存在时用这个）：
-   - PyPI Project Name：`houyidb` / `langchain-houyidb` /
-     `llama-index-vector-stores-houyidb`
-   - Owner：`houyidb-community`
-   - Repository：`houyidb`
-   - Workflow：`publish-sdks.yml`
-   - Environment：`pypi`
-3. 在 GitHub 仓库 Settings → Environments 创建 `pypi`（无需 secret）。
+2. **重要**：PyPI 的 pending publisher 以
+   `(owner, repository, workflow, environment)` 唯一。同一个 monorepo 不能给
+   多个未创建项目复用同一组配置，否则第三个会报
+   `A pending trusted publisher matching this configuration has already been
+   registered for a different project name`。每个包使用独立的 environment：
+
+   | PyPI Project Name | Environment |
+   |-------------------|-------------|
+   | `houyidb` | `pypi` |
+   | `langchain-houyidb` | `pypi-langchain` |
+   | `llama-index-vector-stores-houyidb` | `pypi-llama` |
+
+   三个项目的 Owner 都是 `houyidb-community`，Repository 都是 `houyidb`，
+   Workflow 都是 `publish-sdks.yml`。
+3. 在 GitHub 仓库 Settings → Environments 创建
+   `pypi`、`pypi-langchain`、`pypi-llama`（无需 secret）。
 4. 推送 `v*` tag 或手动运行 `Publish SDKs` 并勾选 publish。
 5. 本地手动发布（备用）：
 
