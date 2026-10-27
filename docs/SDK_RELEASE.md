@@ -24,7 +24,7 @@
 | 1 | PyPI | `houyidb` / `langchain-houyidb` / `llama-index-vector-stores-houyidb` | pypi.org | Trusted Publishing（无 Token） |
 | 2 | npm | `houyidb` / `houyidb-mcp` | npmjs.com | `NPM_TOKEN` |
 | 3 | crates.io | `houyidb-client` | crates.io | `CARGO_REGISTRY_TOKEN` |
-| 4 | NuGet | `HouyiDb` | nuget.org | `NUGET_API_KEY` |
+| 4 | NuGet | `HouyiDb` | nuget.org | Trusted Publishing（`NUGET_USER`） |
 | 5 | Maven Central | `top.houyidb:houyidb-client` | Sonatype Central Portal | GPG + Portal Token |
 | 6 | Go | `github.com/houyidb-community/houyidb/sdk/go/houyidb` | 无 | 无（打 tag） |
 
@@ -96,20 +96,31 @@ cargo publish -p houyidb-client
 
 > 首次发布会占用 `houyidb-client` 名称；版本号不可覆盖。
 
-## 5. NuGet
+## 5. NuGet（Trusted Publishing，无需 API Key）
 
-1. 注册 <https://www.nuget.org> 并开启 2FA。
-2. API Keys → Create，Scope 选择 Push new packages and package versions，
-   Glob 填 `HouyiDb`。
-3. 在 GitHub 仓库添加 secret `NUGET_API_KEY`。
-4. 本地：
+1. 登录 <https://www.nuget.org>，点击用户名 → **Trusted Publishing** →
+   **Add policy**。
+2. 填写 GitHub 策略：
+   - Owner：你的 nuget.org 个人账号（或拥有 `HouyiDb` 的组织）
+   - Repository Owner：`houyidb-community`
+   - Repository：`houyidb`
+   - Workflow File：`publish-sdks.yml`（只写文件名）
+   - Environment：`nuget`
+   - Scope：允许 **Push new packages and package versions**，Glob 填
+     `HouyiDb`（如果界面要求通配，可用 `HouyiDb*`）
+3. 在 GitHub 仓库添加 secret `NUGET_USER`，值是 nuget.org 的**profile
+   name**，不是邮箱。
+4. 不需要 `NUGET_API_KEY`；workflow 里的 `NuGet/login` 会用 GitHub OIDC
+   换一个 1 小时有效的临时 key。
+5. 本地只做打包验证：
 
 ```bash
 cd sdk/dotnet
 dotnet pack src/HouyiDb/HouyiDb.csproj -c Release -o dist
-dotnet nuget push dist/*.nupkg \
-  --api-key <key> --source https://api.nuget.org/v3/index.json
 ```
+
+> 2FA 不需要关闭；Trusted Publishing 在 CI 里不要求 OTP。策略首次创建后
+> 可能处于 7 天临时激活期，第一次成功发布后会转为永久。
 
 ## 6. Maven Central（Sonatype Central Portal）
 

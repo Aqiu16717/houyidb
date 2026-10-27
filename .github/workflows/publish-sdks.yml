@@ -135,6 +135,12 @@ jobs:
     if: github.repository == 'houyidb-community/houyidb'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    # 与 nuget.org Trusted Publishing policy 的 Environment 字段一致。
+    # EN: must match the Environment field of the nuget.org trusted policy.
+    environment: nuget
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -151,10 +157,20 @@ jobs:
       - if: >-
           (github.event_name == 'release' || inputs.publish) &&
           (github.event_name == 'release' || contains(inputs.ecosystems, 'nuget'))
+        name: NuGet login (OIDC -> temporary API key)
+        id: nuget-login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          # nuget.org profile name，不是邮箱；放在 repo secret NUGET_USER。
+          # EN: nuget.org profile name, not email; stored as repo secret.
+          user: ${{ secrets.NUGET_USER }}
+      - if: >-
+          (github.event_name == 'release' || inputs.publish) &&
+          (github.event_name == 'release' || contains(inputs.ecosystems, 'nuget'))
         run: dotnet nuget push dist/*.nupkg --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
         working-directory: sdk/dotnet
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
 
   crates:
     name: crates.io

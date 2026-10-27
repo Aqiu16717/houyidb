@@ -27,7 +27,7 @@
 | 1 | PyPI | `houyidb` / `langchain-houyidb` / `llama-index-vector-stores-houyidb` | pypi.org | Trusted Publishing (no token) |
 | 2 | npm | `houyidb` / `houyidb-mcp` | npmjs.com | `NPM_TOKEN` |
 | 3 | crates.io | `houyidb-client` | crates.io | `CARGO_REGISTRY_TOKEN` |
-| 4 | NuGet | `HouyiDb` | nuget.org | `NUGET_API_KEY` |
+| 4 | NuGet | `HouyiDb` | nuget.org | Trusted Publishing (`NUGET_USER`) |
 | 5 | Maven Central | `top.houyidb:houyidb-client` | Sonatype Central Portal | GPG + Portal token |
 | 6 | Go | `github.com/houyidb-community/houyidb/sdk/go/houyidb` | none | none (tag) |
 
@@ -101,20 +101,32 @@ cargo publish -p houyidb-client
 
 > The first publish reserves `houyidb-client`; versions cannot be overwritten.
 
-## 5. NuGet
+## 5. NuGet (Trusted Publishing, no API key)
 
-1. Register at <https://www.nuget.org> and enable 2FA.
-2. API Keys → Create; scope to "Push new packages and package versions", glob
-   `HouyiDb`.
-3. Add the `NUGET_API_KEY` secret to the GitHub repository.
-4. Locally:
+1. Sign in at <https://www.nuget.org>, click your username →
+   **Trusted Publishing** → **Add policy**.
+2. Configure the GitHub policy:
+   - Owner: your nuget.org user (or the organization that owns `HouyiDb`)
+   - Repository Owner: `houyidb-community`
+   - Repository: `houyidb`
+   - Workflow File: `publish-sdks.yml` (filename only)
+   - Environment: `nuget`
+   - Scope: allow **Push new packages and package versions**; glob `HouyiDb`
+     (use `HouyiDb*` if the UI expects a wildcard)
+3. Add the GitHub repository secret `NUGET_USER`; its value is your nuget.org
+   **profile name**, not your email.
+4. No `NUGET_API_KEY` is needed; the `NuGet/login` workflow step exchanges a
+   GitHub OIDC token for a temporary key valid for one hour.
+5. Pack locally only:
 
 ```bash
 cd sdk/dotnet
 dotnet pack src/HouyiDb/HouyiDb.csproj -c Release -o dist
-dotnet nuget push dist/*.nupkg \
-  --api-key <key> --source https://api.nuget.org/v3/index.json
 ```
+
+> You do not need to disable 2FA; Trusted Publishing does not require OTP in
+> CI. A new policy may be temporarily active for seven days and becomes
+> permanent after the first successful publish.
 
 ## 6. Maven Central (Sonatype Central Portal)
 
