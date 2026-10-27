@@ -15,7 +15,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Official .NET client for HouyiDB vector database (collections HTTP API)</Description>
     <Authors>HouyiDB Contributors</Authors>
-    <LicenseExpression>Apache-2.0</LicenseExpression>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- 类型/方法级文档手写维护；属性/常量逐条补注释噪音大于价值，抑制 CS1591 -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
