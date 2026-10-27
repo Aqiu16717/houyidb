@@ -6,8 +6,6 @@
 
 单机、内存优先的向量数据库：HNSW 向量检索 + PAX 行列混存 + pg_wire/HTTP 双接口 + WAL 持久化。
 
-官网：<https://houyidb.top> · [性能实测](https://houyidb.top/performance.html)
-
 ![HouyiDB 60 秒演示：写入、检索、过滤、kill -9 后重启恢复](demo/houyidb-demo.gif)
 
 > 第一次使用？看 [`docs/USER_MANUAL.md`](docs/USER_MANUAL.md)（30 分钟从上手到重启恢复）。
@@ -96,7 +94,6 @@ streaming 50% 阶段串行查询总耗时从 104s 降到 3.9s、p99 从 1.72s �
 - 移动端（C ABI）：[`docs/HOUYIDB_MOBILE_MANUAL.md`](docs/HOUYIDB_MOBILE_MANUAL.md)
 - MCP 服务：[`mcp/houyidb-mcp/README.md`](mcp/houyidb-mcp/README.md)
 - SDK 发布手册：[`docs/SDK_RELEASE.md`](docs/SDK_RELEASE.md)
-- 官网：[houyidb.top](https://houyidb.top)
 
 ## License & Governance
 

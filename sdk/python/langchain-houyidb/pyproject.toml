@@ -13,7 +13,7 @@ authors = [{ name = "HouyiDB Contributors" }]
 dependencies = ["langchain-core>=0.3", "houyidb>=0.2.0b5"]
 
 [project.urls]
-Homepage = "https://houyidb.top"
+Homepage = "https://github.com/houyidb-community/houyidb"
 Repository = "https://github.com/houyidb-community/houyidb"
 Documentation = "https://github.com/houyidb-community/houyidb/blob/main/docs/USER_MANUAL.md"
 

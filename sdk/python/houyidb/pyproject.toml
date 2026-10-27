@@ -14,7 +14,7 @@ keywords = ["vector-database", "hnsw", "rag", "houyidb"]
 dependencies = ["requests>=2.28"]
 
 [project.urls]
-Homepage = "https://houyidb.top"
+Homepage = "https://github.com/houyidb-community/houyidb"
 Repository = "https://github.com/houyidb-community/houyidb"
 Documentation = "https://github.com/houyidb-community/houyidb/blob/main/docs/USER_MANUAL.md"
 

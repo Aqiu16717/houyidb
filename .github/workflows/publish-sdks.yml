@@ -95,12 +95,14 @@ jobs:
       # EN: integration tests need a running houyi-server; run unit tests only.
       - run: npm test -- --exclude tests/integration.test.ts
         working-directory: sdk/typescript/houyidb
-      - run: npm pack --pack-destination dist
+      # 打到 dist/ 之外的目录，避免 tarball 被 files:["dist"] 打进包内。
+      # EN: pack outside dist/ so the tarball is not nested into the package.
+      - run: mkdir -p npm-pack && npm pack --pack-destination npm-pack
         working-directory: sdk/typescript/houyidb
       - uses: actions/upload-artifact@v4
         with:
           name: npm-package
-          path: sdk/typescript/houyidb/dist/*.tgz
+          path: sdk/typescript/houyidb/npm-pack/*.tgz
       - if: >-
           (github.event_name == 'release' || inputs.publish) &&
           (github.event_name == 'release' || contains(inputs.ecosystems, 'npm'))
@@ -114,12 +116,12 @@ jobs:
         working-directory: mcp/houyidb-mcp
       - run: npm test
         working-directory: mcp/houyidb-mcp
-      - run: npm pack --pack-destination dist
+      - run: mkdir -p npm-pack && npm pack --pack-destination npm-pack
         working-directory: mcp/houyidb-mcp
       - uses: actions/upload-artifact@v4
         with:
           name: npm-mcp-package
-          path: mcp/houyidb-mcp/dist/*.tgz
+          path: mcp/houyidb-mcp/npm-pack/*.tgz
       - if: >-
           (github.event_name == 'release' || inputs.publish) &&
           (github.event_name == 'release' || contains(inputs.ecosystems, 'npm'))

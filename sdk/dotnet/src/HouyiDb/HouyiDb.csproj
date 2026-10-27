@@ -11,7 +11,7 @@
     <Version>0.2.0-beta.5</Version>
     <RepositoryUrl>https://github.com/houyidb-community/houyidb</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageProjectUrl>https://houyidb.top</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/houyidb-community/houyidb</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Official .NET client for HouyiDB vector database (collections HTTP API)</Description>
     <Authors>HouyiDB Contributors</Authors>

@@ -6,9 +6,9 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/houyidb-community/houyidb"
+    "url": "git+https://github.com/houyidb-community/houyidb.git"
   },
-  "homepage": "https://houyidb.top",
+  "homepage": "https://github.com/houyidb-community/houyidb",
   "type": "module",
   "bin": {
     "houyidb-mcp": "./dist/index.js"

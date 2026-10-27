@@ -48,7 +48,7 @@ publishing {
             pom {
                 name = 'houyidb-client'
                 description = 'Official Java client for HouyiDB vector database (collections HTTP API)'
-                url = 'https://houyidb.top'
+                url = 'https://github.com/houyidb-community/houyidb'
                 licenses {
                     license {
                         name = 'Apache License, Version 2.0'

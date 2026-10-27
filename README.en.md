@@ -6,8 +6,6 @@
 
 A single-node, memory-first vector database: HNSW vector search + PAX row-column hybrid storage + pg_wire/HTTP dual interfaces + WAL persistence.
 
-Website: <https://houyidb.top> · [Measurements](https://houyidb.top/performance.html)
-
 ![HouyiDB 60-second demo: upsert, search, filter, kill -9, restart recovery](demo/houyidb-demo.gif)
 
 > First time here? See [`docs/USER_MANUAL.md`](docs/USER_MANUAL.md) (30 minutes from setup to restart recovery).
@@ -91,7 +89,6 @@ The six-language `stable_id` (BLAKE2b-8 big-endian & 2^63-1) is cross-checked ag
 - Mobile (C ABI): [`docs/HOUYIDB_MOBILE_MANUAL.md`](docs/HOUYIDB_MOBILE_MANUAL.md)
 - MCP server: [`mcp/houyidb-mcp/README.md`](mcp/houyidb-mcp/README.md)
 - SDK release guide: [`docs/SDK_RELEASE.md`](docs/SDK_RELEASE.md)
-- Website: [houyidb.top](https://houyidb.top)
 
 ## License & Governance
 
