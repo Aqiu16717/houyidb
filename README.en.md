@@ -4,6 +4,8 @@
 
 <p align="center"><img src="docs/assets/logo-h-en-red.png" alt="HouyiDB" width="380"></p>
 
+<p align="center"><a href="https://artifacthub.io/packages/helm/houyidb/houyidb"><img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/houyidb" alt="Artifact Hub"></a></p>
+
 A single-node, memory-first vector database: HNSW vector search + PAX row-column hybrid storage + pg_wire/HTTP dual interfaces + WAL persistence.
 
 ![HouyiDB 60-second demo: upsert, search, filter, kill -9, restart recovery](demo/houyidb-demo.gif)
